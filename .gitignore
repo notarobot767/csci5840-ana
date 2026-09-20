@@ -3,3 +3,4 @@
 5840_technitium/config
 running_configs/*
 startup_configs/*
+5840_cloudfalred/secrets/*

@@ -1,0 +1,35 @@
+<div class="w-50 mx-auto text-center">
+    <p>TSS is an 359TTSB initiative to provide tactical node monitoring and other capabilities to the theater and brigades through an assortment of web applications hosted on a tactical node in the rear connected via GAIT PoP. All of the applications are free and or open source and can be accessed via tactical or strategic networks. For NIPR, this would also include Azure Virtual Desktop (AVD).
+    </p>
+
+    <h3>The primary user applications are:</h3>
+    <p>
+        <a target="_blank" rel="noopener noreferrer"
+            href="https://www.zabbix.com/documentation/current/en/manual/introduction/about">
+            <b>Zabbix</b>
+        </a>
+        : An active probing software that can interact with nodes or via ICMP, SNMP, DNS, NTP, HTTP, etc. This is similar to SNMPC and solarwinds except that it can store any metric and visually display said data in a number of widgets. This is useful for capturing latency and being able to show: when a node was last online, when an outage occurred, when a node conducts a change in transport, etc.
+    </p>
+
+    <p>
+        <a target="_blank" rel="noopener noreferrer"
+            href="https://www.elastic.co/kibana">
+            <b>Kibana</b>
+        </a>
+        : Kibana is a log visualization tool that is a part of an ecosystem of applications created by Elastic and others that ship, transform, and ingest data. Primary meant for log visualizations, we can also use it to analyze bandwidth utilization from nodes by ingesting NetFlow. This will tell us over a given period of time, how much a node downloads/uploads data, when data is most consumed, and what users/IPs are responsible. We can also use this to analyzse system logs form network devices or security agents installed on user laptops.
+    </p>
+    <p>
+        <a target="_blank" rel="noopener noreferrer"
+            href="https://github.com/aperezdc/ngx-fancyindex">
+            <b>Files</b>
+        </a>
+        : Using a NGINX web server with the Fancy Index module, this is a basic file server. Perhaps more useful on enclaves other than NIPR, this server would enable sharing and distribution of file without a secret or other token smart card.
+    </p>
+    <p>
+        <a target="_blank" rel="noopener noreferrer"
+            href="https://www.cisco.com/c/en/us/products/conferencing/meeting-server/index.html">
+            <b>Cisco Meeting Server</b>
+        </a>
+        : This is a collaboration suite that users can join via web client or VoIP end device. It enables voice, video, screen sharing, IM chat that users can join in an ad hoc manner. This is useful for classified domains where not all participants have a secret token. Furthermore, as this service is hosted at the tactical edge, this reduces latency, making it a ideal candidate for an exercise communication platform.
+    </p>
+</div><br>

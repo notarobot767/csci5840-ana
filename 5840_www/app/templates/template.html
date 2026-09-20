@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+{% include "components/head.html" %}
+<body>
+    {% include "components/navbar.html" %}
+    <h1>{{ h1 }}</h1>
+
+    {% if comp1 is defined %}
+    {% include comp1 %}
+    {% endif %}
+
+    {% if comp2 is defined %}
+    {% include comp2 %}
+    {% endif %}
+
+    {% if comp3 is defined %}
+    {% include comp3 %}
+    {% endif %}
+
+    {% include "components/footer.html" %}
+</body>
+</html>

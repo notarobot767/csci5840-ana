@@ -1,0 +1,50 @@
+body {
+    color: white;
+    background-color: black;
+    font-family: Arial, sans-serif;
+    text-align: center;
+}
+
+.navbar {
+  height: 35px;
+}
+
+.nav-link {
+  color: white;
+  font-weight: bold;
+}
+
+#unclass_banner {
+    background-color: green;
+    height: 23px;
+    font-size: 100%;
+}
+
+#nipr_voip {
+    color: green;
+}
+
+#sipr_voip {
+    color: crimson;
+}
+
+#mpe_voip {
+    color: darkorchid ;
+}
+
+#ascii_art {
+    text-align: center;
+    font-family:'Courier New', Courier, monospace;
+    color: white;
+}
+
+#email {
+    color: white;
+    text-decoration: none;
+}
+
+#contact_book {
+    width:75%;
+    margin-left: auto;
+    margin-right: auto;
+}
