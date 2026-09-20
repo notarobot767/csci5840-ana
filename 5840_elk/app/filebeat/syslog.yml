@@ -1,0 +1,17 @@
+filebeat.inputs:
+  - type: udp
+    host: "[::]:514"
+
+# Critical: Turn off ILM so Filebeat honors custom index names
+setup.ilm.enabled: false
+
+setup.template:
+  name: "syslog-army"
+  pattern: "syslog-army"
+  enabled: true
+
+output.elasticsearch:
+  index: "syslog-army"
+  hosts: ["http://172.31.255.255:9200"]
+  username: "${FILEBEAT_USER}"
+  password: "${FILEBEAT_PW}"

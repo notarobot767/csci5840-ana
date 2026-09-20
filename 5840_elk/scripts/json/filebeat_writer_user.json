@@ -1,0 +1,10 @@
+{
+  "username" : "filebeat_writer",
+  "roles" : [
+    "filebeat_writer"
+  ],
+  "full_name" : "",
+  "email" : "",
+  "metadata" : { },
+  "enabled" : true
+}

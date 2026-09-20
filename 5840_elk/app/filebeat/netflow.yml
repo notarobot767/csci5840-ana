@@ -1,0 +1,14 @@
+filebeat.modules:
+- module: netflow
+  log.enabled: true
+  log.var.netflow_host: 0.0.0.0
+
+setup.template:
+  name: "netflow-cisco-army"
+  pattern: "netflow-cisco-army"
+
+output.elasticsearch:
+  index: "netflow-cisco-army"
+  hosts: ["http://172.31.255.255:9200"]
+  username: "${FILEBEAT_USER}"
+  password: "${FILEBEAT_PW}"

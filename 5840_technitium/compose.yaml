@@ -1,0 +1,35 @@
+services:
+  technitium:
+    image: technitium/dns-server:latest
+    networks:
+      - technitium
+    ports:
+      # Web Console & DNS-over-HTTP (HTTP)
+      - "5380:5380/tcp"
+      # Web Console & DNS-over-HTTPS (HTTPS)
+      - "53443:53443/tcp"
+      # Standard DNS (TCP & UDP)
+      #- "53:53/udp"
+      #- "53:53/tcp"
+      # DNS-over-TLS (DoT)
+      - "853:853/tcp"
+      # DNS-over-QUIC / DNS-over-HTTP/3 (DoQ / DoH3)
+      - "853:853/udp"
+      - "443:443/udp"
+      # Optional: DHCP Server (Uncomment if using Technitium as DHCP server)
+      # - "67:67/udp"
+    environment:
+      - DNS_SERVER_DOMAIN=lab.local # Domain name for the server
+      - DNS_SERVER_PREFER_IPV6=true
+      - DNS_SERVER_WEB_SERVICE_HTTP_PORT=5380
+      - DNS_SERVER_WEB_SERVICE_HTTPS_PORT=53443
+      # Optional: Pre-configure upstream DNS (defaults to Cloudflare/Quad9 if not set)
+      # - DNS_SERVER_FORWARDERS=1.1.1.1, 9.9.9.9
+    volumes:
+      - ./config:/etc/dns
+    sysctls:
+      - net.ipv4.ip_local_port_range=1024 65000
+    restart: unless-stopped
+networks:
+  technitium:
+    enable_ipv6: true

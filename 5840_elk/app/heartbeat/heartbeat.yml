@@ -1,0 +1,44 @@
+.icmp6_template: &icmp6_defaults
+  type: icmp
+  schedule: '@every 30s'
+  timeout: 2s
+  ipv4: false
+  ipv6: true
+  mode: any
+
+heartbeat.monitors:
+  - <<: *icmp6_defaults
+    id: r1
+    hosts: ["2600:bad:c0de::1"]
+  - <<: *icmp6_defaults
+    id: r2
+    hosts: ["2600:bad:c0de::2"]
+  - <<: *icmp6_defaults
+    id: r3
+    hosts: ["2600:bad:c0de::3"]
+  - <<: *icmp6_defaults
+    id: r4
+    hosts: ["2600:bad:c0de::4"]
+  - <<: *icmp6_defaults
+    id: s1
+    hosts: ["2600:bad:c0de::11"]
+  - <<: *icmp6_defaults
+    id: s2
+    hosts: ["2600:bad:c0de::12"]
+  - <<: *icmp6_defaults
+    id: s3
+    hosts: ["2600:bad:c0de::13"]
+  - <<: *icmp6_defaults
+    id: s4
+    hosts: ["2600:bad:c0de::14"]
+
+setup.template:
+  name: "heartbeat-army"
+  pattern: "heartbeat-army"
+  enabled: true
+
+output.elasticsearch:
+  index: "heartbeat-army"
+  hosts: ["http://172.31.255.255:9200"]
+  username: "${FILEBEAT_USER}"
+  password: "${FILEBEAT_PW}"

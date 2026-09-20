@@ -1,0 +1,82 @@
+services:
+  netbox: &netbox
+    image: netboxcommunity/netbox:latest
+    depends_on:
+      postgres:
+        condition: service_healthy
+      valkey:
+        condition: service_healthy
+      valkey-cache:
+        condition: service_healthy
+    env_file:
+      - ./netbox.env
+    #user: "unit:root"
+    volumes:
+      - netbox-media-files:/opt/netbox/netbox/media
+      - netbox-reports-files:/opt/netbox/netbox/reports
+      - netbox-scripts-files:/opt/netbox/netbox/scripts
+    ports:
+      - "8081:8080"
+
+  netbox-worker:
+    <<: *netbox
+    depends_on:
+      netbox:
+        condition: service_started
+    command:
+      - /opt/netbox/venv/bin/python
+      - /opt/netbox/netbox/manage.py
+      - rqworker
+    ports: []
+
+  postgres:
+    image: postgres:16-alpine
+    env_file:
+      - ./netbox.env
+    volumes:
+      - netbox-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -d $$POSTGRES_DB -U $$POSTGRES_USER"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  valkey:
+    image: valkey/valkey:8-alpine
+    command:
+      - sh
+      - -c
+      - valkey-server --appendonly yes --requirepass "$$REDIS_PASSWORD"
+    env_file:
+      - ./netbox.env
+    volumes:
+      - netbox-valkey-data:/data
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  valkey-cache:
+    image: valkey/valkey:8-alpine
+    command:
+      - sh
+      - -c
+      - valkey-server --requirepass "$$REDIS_PASSWORD"
+    env_file:
+      - ./netbox.env
+    volumes:
+      - netbox-valkey-cache-data:/data
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  netbox-media-files:
+  netbox-reports-files:
+  netbox-scripts-files:
+  netbox-postgres-data:
+  netbox-valkey-data:
+  netbox-valkey-cache-data:

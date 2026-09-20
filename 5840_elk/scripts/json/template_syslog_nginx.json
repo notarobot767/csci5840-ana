@@ -1,0 +1,109 @@
+{
+  "index_patterns" : [
+    "syslog-nginx-*"
+  ],
+  "template" : {
+    "settings" : {
+      "index" : {
+        "mode" : "standard"
+      }
+    },
+    "mappings" : {
+      "properties" : {
+        "app.http.ssl.cipher" : {
+          "type" : "keyword"
+        },
+        "app.src.ip" : {
+          "type" : "ip"
+        },
+        "app.http.status" : {
+          "coerce" : true,
+          "index" : true,
+          "ignore_malformed" : false,
+          "store" : false,
+          "type" : "integer",
+          "doc_values" : true
+        },
+        "app.dst.ip" : {
+          "type" : "ip"
+        },
+        "app.http.referer" : {
+          "type" : "keyword"
+        },
+        "host.hostname" : {
+          "type" : "keyword"
+        },
+        "type" : {
+          "type" : "keyword"
+        },
+        "service.type" : {
+          "type" : "keyword"
+        },
+        "app.http.bytes" : {
+          "type" : "integer"
+        },
+        "log.syslog.facility.name" : {
+          "type" : "keyword"
+        },
+        "@version" : {
+          "type" : "keyword"
+        },
+        "app.http.version" : {
+          "type" : "keyword"
+        },
+        "log.syslog.severity.name" : {
+          "type" : "keyword"
+        },
+        "app.http.ssl.version" : {
+          "type" : "keyword"
+        },
+        "app.http.path" : {
+          "type" : "keyword"
+        },
+        "app.http.server" : {
+          "type" : "keyword"
+        },
+        "app.src.port" : {
+          "type" : "integer"
+        },
+        "app.nginx.version" : {
+          "type" : "keyword"
+        },
+        "app.http.scheme" : {
+          "type" : "keyword"
+        },
+        "app.dst.port" : {
+          "type" : "integer"
+        },
+        "app.host.src.ip" : {
+          "type" : "ip"
+        },
+        "process.name" : {
+          "type" : "keyword"
+        },
+        "app.http.ssl.session_id" : {
+          "type" : "keyword"
+        },
+        "namespace" : {
+          "type" : "keyword"
+        },
+        "dataset" : {
+          "type" : "keyword"
+        },
+        "app.http.method" : {
+          "type" : "keyword"
+        }
+      }
+    },
+    "lifecycle" : {
+      "enabled" : true,
+      "data_retention" : "365d"
+    }
+  },
+  "composed_of" : [ ],
+  "data_stream" : {
+    "hidden" : false,
+    "allow_custom_routing" : false
+  },
+  "ignore_missing_component_templates" : [ ]
+}

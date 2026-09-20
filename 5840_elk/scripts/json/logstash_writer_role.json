@@ -1,0 +1,30 @@
+{
+  "cluster" : [
+    "manage_index_templates",
+    "monitor",
+    "manage_ilm",
+    "read_pipeline"
+  ],
+  "indices" : [
+    {
+      "names" : [
+        "syslog-*"
+      ],
+      "privileges" : [
+        "write",
+        "create_index",
+        "read",
+        "view_index_metadata",
+        "auto_configure"
+      ],
+      "allow_restricted_indices" : false
+    }
+  ],
+  "applications" : [ ],
+  "run_as" : [ ],
+  "metadata" : { },
+  "transient_metadata" : {
+    "enabled" : true
+  },
+  "description" : "writes to syslog indices"
+}

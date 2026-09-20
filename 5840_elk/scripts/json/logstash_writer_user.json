@@ -1,0 +1,10 @@
+{
+  "username" : "logstash_writer",
+  "roles" : [
+    "logstash_writer"
+  ],
+  "full_name" : "",
+  "email" : "",
+  "metadata" : { },
+  "enabled" : true
+}

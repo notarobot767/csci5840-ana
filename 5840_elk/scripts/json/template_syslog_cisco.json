@@ -1,0 +1,125 @@
+{
+  "index_patterns" : [
+    "syslog-cisco-*"
+  ],
+  "template" : {
+    "settings" : {
+      "index" : {
+        "mode" : "standard"
+      }
+    },
+    "mappings" : {
+      "properties" : {
+        "app.severity" : {
+          "type" : "byte"
+        },
+        "app.cisco.login.failed.reason" : {
+          "type" : "keyword"
+        },
+        "app.cisco.login.cipher" : {
+          "type" : "keyword"
+        },
+        "host.hostname" : {
+          "type" : "keyword"
+        },
+        "type" : {
+          "type" : "keyword"
+        },
+        "service.type" : {
+          "type" : "keyword"
+        },
+        "host.ip" : {
+          "type" : "ip"
+        },
+        "app.cisco.mnemonic" : {
+          "eager_global_ordinals" : false,
+          "norms" : false,
+          "index" : true,
+          "store" : false,
+          "type" : "keyword",
+          "split_queries_on_whitespace" : false,
+          "index_options" : "docs",
+          "doc_values" : true
+        },
+        "log.syslog.facility.name" : {
+          "type" : "keyword"
+        },
+        "app.destination.port" : {
+          "coerce" : true,
+          "index" : true,
+          "ignore_malformed" : false,
+          "store" : false,
+          "type" : "integer",
+          "doc_values" : true
+        },
+        "@version" : {
+          "type" : "keyword"
+        },
+        "log.syslog.severity.name" : {
+          "type" : "keyword"
+        },
+        "app.cisco.login.source" : {
+          "type" : "ip"
+        },
+        "app.message" : {
+          "type" : "text"
+        },
+        "app.cisco.login.hmac" : {
+          "type" : "keyword"
+        },
+        "app.cisco.login.localport" : {
+          "type" : "integer"
+        },
+        "app.cisco.login.tty" : {
+          "type" : "integer"
+        },
+        "app.cisco.sequence" : {
+          "type" : "long"
+        },
+        "app.timestamp" : {
+          "format" : "strict_date_optional_time||epoch_millis||MMM dd yyyy HH:mm:ss.SSS||MMM d yyyy HH:mm:ss.SSS z",
+          "index" : true,
+          "ignore_malformed" : false,
+          "store" : false,
+          "type" : "date",
+          "doc_values" : true
+        },
+        "tags" : {
+          "type" : "keyword"
+        },
+        "app.cisco.user" : {
+          "type" : "keyword"
+        },
+        "namespace" : {
+          "type" : "keyword"
+        },
+        "app.facility" : {
+          "type" : "keyword"
+        },
+        "app.cisco.facility" : {
+          "eager_global_ordinals" : false,
+          "norms" : false,
+          "index" : true,
+          "store" : false,
+          "type" : "keyword",
+          "split_queries_on_whitespace" : false,
+          "index_options" : "docs",
+          "doc_values" : true
+        },
+        "dataset" : {
+          "type" : "keyword"
+        }
+      }
+    },
+    "lifecycle" : {
+      "enabled" : true,
+      "data_retention" : "365d"
+    }
+  },
+  "composed_of" : [ ],
+  "data_stream" : {
+    "hidden" : false,
+    "allow_custom_routing" : false
+  },
+  "ignore_missing_component_templates" : [ ]
+}

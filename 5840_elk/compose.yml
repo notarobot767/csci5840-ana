@@ -1,0 +1,110 @@
+---
+services:
+  elasticsearch:
+    image: elasticsearch:$TAG
+      # https://hub.docker.com/_/elasticsearch
+    environment:
+      discovery.type: single-node
+        # https://www.elastic.co/guide/en/elasticsearch/reference/current/docker.html#_start_a_single_node_cluster
+      bootstrap.memory_lock: true
+        # prevent swap
+        # https://www.elastic.co/guide/en/elasticsearch/reference/current/setup-configuration-memory.html#bootstrap-memory_lock
+      ES_JAVA_OPTS: "-Xms4g -Xmx4g"
+        # set no more than half of allocated memory to VM
+        # https://www.elastic.co/guide/en/elasticsearch/reference/current/advanced-configuration.html#set-jvm-heap-size
+      xpack.security.http.ssl.enabled: false
+        # using http since everything is local
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - ./data/elastic:/usr/share/elasticsearch/data
+    ports:
+      - 9200:9200
+    restart: unless-stopped
+  kibana:
+    # https://www.elastic.co/guide/en/elasticsearch/reference/current/security-minimal-setup.html
+    image: kibana:$TAG
+    # https://hub.docker.com/_/kibana
+    depends_on:
+      - elasticsearch
+    env_file:
+      - ./secrets/kibana.env
+    environment:
+      SERVERNAME: Army
+      SERVER_HOST: 0.0.0.0
+      #SERVER_PUBLICBASEURL: 'https://kibana.tss.usar.army.mil'
+      ELASTICSEARCH_HOSTS: '["http://elasticsearch:9200"]'
+    volumes:
+      - ./data/kibana:/usr/share/kibana/data
+    ports:
+      - 5601:5601
+    restart: unless-stopped
+  fb_netflow:
+    image: docker.elastic.co/beats/filebeat:$TAG
+    network_mode: host
+    env_file:
+      - ./secrets/fb_netflow.env
+    environment:
+      - FILEBEAT_LOGGING_LEVEL=debug
+      - FILEBEAT_LOGGING_SELECTORS=*
+    volumes:
+      - ./data/filebeat/netflow:/usr/share/filebeat/data
+      - ./app/filebeat/netflow.yml:/usr/share/filebeat/filebeat.yml:ro
+    #ports:
+      #- 2055:2055/udp
+        # host VM for external devices
+    restart: unless-stopped
+  fb_syslog:
+    image: docker.elastic.co/beats/filebeat:$TAG
+    network_mode: host
+    user: root
+    cap_add:
+      - NET_BIND_SERVICE
+    env_file:
+      - ./secrets/fb_netflow.env
+    environment:
+      - FILEBEAT_LOGGING_LEVEL=debug
+      - FILEBEAT_LOGGING_SELECTORS=*
+    volumes:
+      - ./data/filebeat/syslog:/usr/share/filebeat/data
+      - ./app/filebeat/syslog.yml:/usr/share/filebeat/filebeat.yml:ro
+  telegraf:
+    image: telegraf:latest
+    network_mode: host
+    depends_on:
+      - elasticsearch
+    env_file:
+      - ./secrets/telegraf.env
+    volumes:
+      - ./app/telegraf/telegraf.conf:/etc/telegraf/telegraf.conf:ro
+      - ./app/mibs:/usr/share/snmp/mibs:ro
+    restart: unless-stopped
+  telegraf_grpc:
+    image: telegraf:latest
+    network_mode: host
+    depends_on:
+      - elasticsearch
+    env_file:
+      - ./secrets/telegraf.env
+    volumes:
+      - ./app/telegraf_grpc/telegraf.conf:/etc/telegraf/telegraf.conf:ro
+    restart: unless-stopped
+
+  heartbeat:
+    image: docker.elastic.co/beats/heartbeat:$TAG
+    network_mode: host
+    user: root
+    cap_add:
+      - NET_RAW
+    depends_on:
+      - elasticsearch
+    env_file:
+      - ./secrets/fb_netflow.env
+    environment:
+      - ELASTICSEARCH_HOSTS=http://127.0.0.1:9200
+    volumes:
+      - ./app/heartbeat/heartbeat.yml:/usr/share/heartbeat/heartbeat.yml:ro
+      - ./data/heartbeat:/usr/share/heartbeat/data
+    restart: unless-stopped

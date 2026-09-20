@@ -1,0 +1,107 @@
+{
+    "properties": {
+      "app.severity": {
+        "coerce": true,
+        "index": true,
+        "ignore_malformed": false,
+        "store": false,
+        "type": "byte",
+        "doc_values": true
+      },
+      "app.cisco.login.cipher": {
+        "type": "keyword"
+      },
+      "app.cisco.login.hmac": {
+        "type": "keyword"
+      },
+      "app.cisco.login.localport": {
+        "coerce": true,
+        "index": true,
+        "ignore_malformed": false,
+        "store": false,
+        "type": "integer",
+        "doc_values": true
+      },
+      "app.cisco.login.tty": {
+        "coerce": true,
+        "index": true,
+        "ignore_malformed": false,
+        "store": false,
+        "type": "integer",
+        "doc_values": true
+      },
+      "app.cisco.sequence": {
+        "type": "long"
+      },
+      "host.hostname": {
+        "type": "keyword"
+      },
+      "type": {
+        "type": "keyword"
+      },
+      "app.timestamp": {
+        "format": "MMM  d yyyy HH:mm:ss.SSS zzz||MMM dd yyyy HH:mm:ss.SSS zzz",
+        "index": true,
+        "ignore_malformed": false,
+        "store": false,
+        "type": "date",
+        "doc_values": true
+      },
+      "tags": {
+        "type": "keyword"
+      },
+      "service.type": {
+        "type": "keyword"
+      },
+      "host.ip": {
+        "type": "ip"
+      },
+      "app.cisco.mnemonic": {
+        "eager_global_ordinals": false,
+        "norms": false,
+        "index": true,
+        "store": false,
+        "type": "keyword",
+        "split_queries_on_whitespace": false,
+        "index_options": "docs",
+        "doc_values": true
+      },
+      "app.cisco.user": {
+        "type": "keyword"
+      },
+      "log.syslog.facility.name": {
+        "type": "keyword"
+      },
+      "app.destination.port": {
+        "type": "integer"
+      },
+      "@version": {
+        "type": "keyword"
+      },
+      "namespace": {
+        "type": "keyword"
+      },
+      "app.facility": {
+        "type": "keyword"
+      },
+      "log.syslog.severity.name": {
+        "type": "keyword"
+      },
+      "app.cisco.login.source": {
+        "type": "ip"
+      },
+      "app.cisco.facility": {
+        "eager_global_ordinals": false,
+        "norms": false,
+        "index": true,
+        "store": false,
+        "type": "keyword",
+        "split_queries_on_whitespace": false,
+        "index_options": "docs",
+        "doc_values": true
+      },
+      "dataset": {
+        "type": "keyword"
+      }
+    }
+  }

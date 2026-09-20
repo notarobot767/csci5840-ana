@@ -1,0 +1,30 @@
+{
+  "cluster" : [
+    "monitor",
+    "manage_index_templates",
+    "read_pipeline",
+    "manage_ilm"
+  ],
+  "indices" : [
+    {
+      "names" : [
+        "netflow-*"
+      ],
+      "privileges" : [
+        "auto_configure",
+        "create_index",
+        "write",
+        "read",
+        "view_index_metadata"
+      ],
+      "allow_restricted_indices" : false
+    }
+  ],
+  "applications" : [ ],
+  "run_as" : [ ],
+  "metadata" : { },
+  "transient_metadata" : {
+    "enabled" : true
+  },
+  "description" : "writes to netflow indices"
+}
