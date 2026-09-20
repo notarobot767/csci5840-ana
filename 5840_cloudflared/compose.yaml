@@ -1,0 +1,8 @@
+---
+services:
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    command: tunnel run
+    env_file:
+      - ./secrets/cloudflared.env
+    restart: unless-stopped
