@@ -1,0 +1,64 @@
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <form method="POST" action="/device/add">
+                    <div class="mb-3">
+                        <label for="hostname" class="form-label">Hostname</label>
+                        <input type="text" class="form-control" id="hostname" name="hostname" placeholder="e.g. r5" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="ipv6" class="form-label">IPv6 Address</label>
+                        <input type="text" class="form-control" id="ipv6" name="ipv6" placeholder="2600:bad:c0de::5" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="username" class="form-label">Username</label>
+                        <input type="text" class="form-control" id="username" name="username" placeholder="e.g. cisco" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="password" class="form-label">Password</label>
+                        <input type="password" class="form-control" id="password" name="password" placeholder="e.g. cisco" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="vendor" class="form-label">Vendor / Device Type</label>
+                        <select class="form-select" id="vendor" name="vendor" required>
+                            <option value="" disabled selected>Select Vendor</option>
+                            {% for value, label in vendors %}
+                                <option value="{{ value }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="template" class="form-label">Jinja2 Template</label>
+                        <select class="form-select" id="template" name="template" required>
+                            <option value="" disabled selected>Select Template</option>
+                            {% for tmpl in templates %}
+                                <option value="{{ tmpl }}">{{ tmpl }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary">Add Device</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

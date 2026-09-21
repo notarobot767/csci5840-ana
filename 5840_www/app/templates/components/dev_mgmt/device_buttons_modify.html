@@ -1,0 +1,13 @@
+<div class="btn-group" role="group" aria-label="Device Modify Actions">
+    {% for dev in devices %}
+        <a role="button"
+           class="btn btn-outline-warning {{ 'active' if request.path == '/device/modify/' ~ dev }}"
+           {{ 'aria-current="page"' if request.path == '/device/modify/' ~ dev }}
+           data-bs-toggle="tooltip" data-bs-placement="top"
+           href="/device/modify/{{ dev }}"
+           title="Modify {{ dev }}">
+            {{ dev }}
+        </a>
+    {% endfor %}
+</div>
+<br><br>

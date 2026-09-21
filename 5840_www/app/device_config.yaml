@@ -1,8 +1,10 @@
----
 r3:
-  template: "ce"
+  template: ce
 r4:
-  template: "ce"
+  template: ce
   test:
     test1: 1
     test2: 2
+r5:
+  template: ce
+  asdf: true

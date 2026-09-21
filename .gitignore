@@ -8,5 +8,6 @@
 5840_guac/data/*
 5840_guac/secrets/*
 5840_proxy/secrets/*
+5840_www/app/__pycache__
 running_configs/*
 startup_configs/*

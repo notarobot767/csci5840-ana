@@ -1,0 +1,119 @@
+<!-- Load CodeMirror CSS & Themes -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/dracula.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/lint/lint.min.css">
+
+<!-- Load CodeMirror JS, YAML Mode & Linter -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/yaml/yaml.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/lint/lint.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/lint/yaml-lint.min.js"></script>
+
+<style>
+    .CodeMirror {
+        height: auto;
+        min-height: 400px;
+        font-family: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+        font-size: 0.95rem;
+        line-height: 1.55;
+        border-radius: 0 0 6px 6px;
+        text-align: left !important;
+    }
+
+    /* Tighten and left-align the line numbers gutter */
+    .CodeMirror-gutters {
+        border-right: 1px solid rgba(255, 255, 255, 0.1) !important;
+        background-color: #21222c !important;
+        white-space: nowrap;
+    }
+
+    .CodeMirror-linenumber {
+        padding: 0 5px 0 5px !important;
+        min-width: 20px !important;
+        text-align: right;
+        color: #6272a4 !important;
+    }
+
+    /* Pull code text flush against the line gutter */
+    .CodeMirror-lines {
+        padding: 8px 0 !important;
+    }
+
+    .CodeMirror pre.CodeMirror-line,
+    .CodeMirror pre.CodeMirror-line-like {
+        padding: 0 8px !important;
+        text-align: left !important;
+    }
+
+    /* Lint gutter alignment */
+    .CodeMirror-lint-markers {
+        width: 16px;
+    }
+</style>
+
+<div class="container-fluid px-0 mb-4">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <div class="card shadow-sm border-0">
+        <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center py-2 px-3">
+            <div class="d-flex align-items-center gap-2">
+                <span class="badge bg-warning text-dark font-monospace">YAML Editor</span>
+                <span class="font-monospace small text-light">{{ device }} (nested objects supported)</span>
+            </div>
+            <span id="validationBadge" class="badge bg-success">Valid YAML</span>
+        </div>
+
+        <div class="card-body p-0">
+            <form method="POST" action="/device/modify/{{ device }}" id="yamlForm">
+                <textarea id="raw_yaml" name="raw_yaml">{{ raw_yaml_content }}</textarea>
+
+                <div class="p-3 bg-light border-top d-flex justify-content-between align-items-center">
+                    <span class="text-muted small">
+                        Tip: Indent with 2 spaces for nested structures and dictionaries.
+                    </span>
+                    <button type="submit" id="saveBtn" class="btn btn-success px-4">
+                        Save Changes
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    const editor = CodeMirror.fromTextArea(document.getElementById("raw_yaml"), {
+        mode: "yaml",
+        theme: "dracula",
+        lineNumbers: true,
+        tabSize: 2,
+        indentUnit: 2,
+        gutters: ["CodeMirror-lint-markers", "CodeMirror-linenumbers"],
+        lint: true
+    });
+
+    const badge = document.getElementById("validationBadge");
+    const saveBtn = document.getElementById("saveBtn");
+
+    editor.on("change", () => {
+        try {
+            jsyaml.load(editor.getValue());
+            badge.className = "badge bg-success";
+            badge.innerText = "Valid YAML";
+            saveBtn.disabled = false;
+        } catch (e) {
+            badge.className = "badge bg-danger";
+            badge.innerText = "Invalid YAML";
+            saveBtn.disabled = true;
+        }
+    });
+</script>
