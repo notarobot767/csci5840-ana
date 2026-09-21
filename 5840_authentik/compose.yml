@@ -1,0 +1,56 @@
+---
+# modified from
+# https://docs.goauthentik.io/docs/install-config/install/docker-compose
+services:
+  postgresql:
+    image: docker.io/library/postgres:16-alpine
+    restart: unless-stopped
+    volumes:
+      - ./data/postgressql:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER_FILE=/run/secrets/db_user
+      - POSTGRES_PASSWORD_FILE=/run/secrets/db_password
+      - POSTGRES_DB=authentik
+    secrets:
+      - db_user
+      - db_password
+  server:
+    command: server
+    image: ghcr.io/goauthentik/server:$AUTHENTIK_TAG
+    restart: unless-stopped
+    depends_on:
+      - postgresql
+    env_file:
+      - ./secrets/authentik.env
+    environment:
+      - AUTHENTIK_POSTGRESQL__HOST=postgresql
+      - AUTHENTIK_POSTGRESQL__NAME=authentik
+    volumes:
+      - ./data/media:/media
+      - ./data/custom-templates:/templates
+    ports:
+      - $PROXY_BRIDGE:$AUTHENTIK_HOST_PORT:9000
+      - 9000:9000
+      # recommend use reverse proxy to http port
+  worker:
+    command: worker
+    image: ghcr.io/goauthentik/server:$AUTHENTIK_TAG
+    restart: unless-stopped
+    depends_on:
+      - postgresql
+    env_file:
+      - ./secrets/authentik.env
+    environment:
+      AUTHENTIK_POSTGRESQL__HOST: postgresql
+      AUTHENTIK_POSTGRESQL__NAME: authentik
+    user: root
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./data/media:/media
+      - ./data/certs:/certs
+      - ./data/custom-templates:/templates
+secrets:
+  db_user:
+    file: ./secrets/db_user.key
+  db_password:
+    file: ./secrets/db_password.key

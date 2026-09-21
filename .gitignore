@@ -1,6 +1,12 @@
 5840_elk/data
 5840_elk/secrets
 5840_technitium/config
+5840_cloudfalred/secrets/*
+5840_authentik/data/*
+5840_authentik/secrets/*
+5840_code/data/*
+5840_guac/data/*
+5840_guac/secrets/*
+5840_proxy/secrets/*
 running_configs/*
 startup_configs/*
-5840_cloudfalred/secrets/*

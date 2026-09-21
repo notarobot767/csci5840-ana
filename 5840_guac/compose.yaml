@@ -1,0 +1,105 @@
+---
+services:
+  db:
+    image: postgres:$POSTGRES_TAG
+      # https://hub.docker.com/_/postgres
+    networks:
+     - guacamole
+    environment:
+      - POSTGRES_DB=guac
+      - POSTGRES_USER_FILE=/run/secrets/db_user
+      - POSTGRES_PASSWORD_FILE=/run/secrets/db_password
+    secrets:
+      - db_user
+      - db_password
+    volumes:
+      - ./app:/docker-entrypoint-initdb.d:ro
+          # run initialize_db.sh to create the db initialization script
+          # it will create "./app/001-initdb.sql"
+          # https://guacamole.apache.org/doc/gug/guacamole-docker.html
+          # postgres will run this at boot if the db is empty
+          # if you forget to create the initdb file,
+            # bring the stack down: 'docker compose down'
+            # delete the contents of ./data: 'sudo rm -rf ./data'
+            # create attempt to create: 'docker compose up -d db'
+            # verify with logs: 'docker compose logs -f --tail 20 db'
+      - ./data:/var/lib/postgresql/data
+    restart: unless-stopped
+  guacd:
+    image: guacamole/guacd:$GUAC_TAG
+      # https://hub.docker.com/r/guacamole/guacd
+    networks:
+     - guacamole
+    restart: unless-stopped
+  guac:
+    depends_on:
+      - guacd
+      - db
+    image: guacamole/guacamole:$GUAC_TAG
+      # https://hub.docker.com/r/guacamole/guacamole
+    networks:
+     - guacamole
+    ports:
+      - $PROXY_BRIDGE:$GUAC_HOST_PORT:8080
+      - 8090:8080
+      # default site: http://DOMAIN-or-IP/guacamole/
+      # note the /guacamole at the end
+      # recommend use a reverse proxy for https
+    secrets:
+      - db_user
+      - db_password
+    environment:
+      - GUACD_HOSTNAME=guacd
+      - POSTGRESQL_HOSTNAME=db
+      - POSTGRESQL_DATABASE=guac
+      - POSTGRESQL_USERNAME_FILE=/run/secrets/db_user
+      - POSTGRESQL_PASSWORD_FILE=/run/secrets/db_password
+
+      # oauth
+      #######
+      # use to connect to an identity provider such as Authentik or Keycloak
+      # dont use oauth with TOTP unless that is your intent
+      # you can enable TOTP or other 2FA options within Authentik
+      # https://docs.goauthentik.io/integrations/services/apache-guacamole/
+      #
+      - OPENID_ENABLED=true
+      - EXTENSION_PRIORITY=openid
+      - POSTGRESQL_AUTO_CREATE_ACCOUNTS=true
+      - OPENID_AUTO_LOGIN=true
+      - OPENID_REDIRECT_URI=https://guac.badcode.app/guacmole/
+        # the /guacamole/ here is not a slug
+        # the app has it uri location there
+      - OPENID_CLIENT_ID=7G4Ui4VANeNxUh2J5SPOaco4EEYoWDhAoUIQzBnv
+        # put client ID from authentik here
+      - OPENID_AUTHORIZATION_ENDPOINT=https://authentik.badcode.app/application/o/authorize/
+      - OPENID_ISSUER=https://authentik.badcode.app/application/o/guacamole/
+        # the /guacamole/ here for endpoint and issuer are a slug
+        # match the slug you put in authentik
+      - OPENID_JWKS_ENDPOINT=http://172.31.255.255:7015/application/o/guacamole/jwks/
+        # if using a reverse proxy, point to the proxy bridge to authentik for JWKS
+
+      # TOTP
+      ######
+      # enable to allow use of one time passwords for 2FA
+      # if using oauth, you should not use this methods and use 2FA within authentik
+      #
+      #- TOTP_ENABLED=true
+        # enables this module
+      #- TOTP_ISSUE="Apache Guacamole"
+        # set to company name if desired
+      #- TOTP_DIGITS=6
+        # common 6 or 8
+      #- TOTP_PERIOD=30
+        # common 30 or 60 seconds
+      #- TOTP_MODE=sha256
+        # sha1|sha256|sha512
+    restart: unless-stopped
+secrets:
+  # create these files if they do not exist
+  db_user:
+    file: ./secrets/db_user.key
+  db_password:
+    file: ./secrets/db_password.key
+networks:
+  guacamole:
+    enable_ipv6: true

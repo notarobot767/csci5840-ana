@@ -1,0 +1,13 @@
+<div class="btn-group" role="group" aria-label="Device View Actions">
+    {% for item in devices %}
+        <a role="button"
+           class="btn {{ 'btn-primary' if item == device else 'btn-outline-primary' }}"
+           {{ 'aria-current="page"' if item == device }}
+           data-bs-toggle="tooltip" data-bs-placement="top"
+           href="/device/view/{{ item }}"
+           title="View {{ item }}">
+            {{ item }}
+        </a>
+    {% endfor %}
+</div>
+<br><br>

@@ -1,0 +1,27 @@
+<div class="btn-group" role="group" aria-label="Device Configuration Actions">
+    <a role="button" 
+       class="btn btn-outline-primary {{ 'active' if config_type == 'yaml' or request.path.endswith('/yaml') }}"
+       {{ 'aria-current="page"' if config_type == 'yaml' or request.path.endswith('/yaml') }}
+       data-bs-toggle="tooltip" data-bs-placement="top"
+       href="/device/view/{{ device }}/yaml"
+       title="YAML Configuration">
+        Yaml
+    </a>
+    <a role="button" 
+       class="btn btn-outline-primary {{ 'active' if config_type == 'running' or request.path.endswith('/running') }}"
+       {{ 'aria-current="page"' if config_type == 'running' or request.path.endswith('/running') }}
+       data-bs-toggle="tooltip" data-bs-placement="top"
+       href="/device/view/{{ device }}/running"
+       title="Running Configuration">
+        Running Config
+    </a>
+    <a role="button" 
+       class="btn btn-outline-primary {{ 'active' if config_type == 'startup' or request.path.endswith('/startup') }}"
+       {{ 'aria-current="page"' if config_type == 'startup' or request.path.endswith('/startup') }}
+       data-bs-toggle="tooltip" data-bs-placement="top"
+       href="/device/view/{{ device }}/startup"
+       title="Startup Configuration">
+        Startup Config
+    </a>
+</div>
+<br><br>

@@ -12,7 +12,7 @@ services:
       target: www
       context: .
     ports:
-      - 80:8080
+      - 172.31.255.255:80:8080
     volumes:
       - ./app:/app:ro
     restart: unless-stopped
@@ -23,7 +23,7 @@ services:
       target: webtest
       context: .
     ports:
-      - 81:5000
+      - 172.31.255.255:81:5000
     volumes:
       - ./app:/app:ro
     restart: unless-stopped

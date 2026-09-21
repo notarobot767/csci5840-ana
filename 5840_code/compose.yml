@@ -1,0 +1,26 @@
+---
+services:
+  code:
+    image: linuxserver/code-server:latest
+      # https://hub.docker.com/r/linuxserver/code-server
+      # typically you should never use "latest" as a tag
+        # however, no other containers are dependent on this image
+        # in this case, I find it acceptable
+    environment:
+      TZ: $TZ
+      PUID: $PUID
+      PGID: $PGID
+      DEFAULT_WORKSPACE: /app
+      DOCKER_MODS: "linuxserver/mods:code-server-python3"
+        # optional python mod
+        # may require internet IoT rebuild image
+        # so you may need to comment it out
+    volumes:
+      # dir for persistent settings
+      # map other dirs on host os to edit
+      - ./data:/config
+      - ../:/app/docker
+      # assumes your docker directory is here
+    ports:
+      - $PROXY_BRIDGE:$CODE_HOST_PORT:8443
+    restart: unless-stopped

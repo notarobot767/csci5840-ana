@@ -1,0 +1,13 @@
+<div class="btn-group" role="group" aria-label="Device Remove Actions">
+    {% for dev in devices %}
+        <a role="button"
+           class="btn btn-outline-danger {{ 'active' if request.path == '/device/remove/' ~ dev }}"
+           {{ 'aria-current="page"' if request.path == '/device/remove/' ~ dev }}
+           data-bs-toggle="tooltip" data-bs-placement="top"
+           href="/device/remove/{{ dev }}"
+           title="Remove {{ dev }}">
+            {{ dev }}
+        </a>
+    {% endfor %}
+</div>
+<br><br>

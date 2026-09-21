@@ -1,0 +1,8 @@
+---
+r3:
+  template: "ce"
+r4:
+  template: "ce"
+  test:
+    test1: 1
+    test2: 2
