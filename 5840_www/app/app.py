@@ -67,7 +67,8 @@ def device_view_device_yaml(device):
             h1=f"View Device: {device}",
             comp1="components/dev_mgmt/app_buttons.html",
             comp2="components/dev_mgmt/device_buttons_view.html",
-            comp3="components/dev_mgmt/device_buttons_view_function_yaml.html",
+            comp3="components/dev_mgmt/device_buttons_view_function.html",
+            comp4="components/dev_mgmt/device_buttons_view_function_yaml.html",
             yaml_content=device_mgmt.get_device_yaml(device),
             device_data=device_mgmt.get_devices().get(device, {}),
         )
