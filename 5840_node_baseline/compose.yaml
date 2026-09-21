@@ -1,0 +1,21 @@
+---
+services:
+  make_ansible_play:
+    environment:
+      TZ: Etc/UTC
+    build:
+      context: .
+      target: make_ansible_play
+    volumes:
+      - ./app:/app
+  make_device_config:
+    depends_on:
+      make_ansible_play:
+        condition: service_completed_successfully
+    environment:
+      TZ: Etc/UTC
+    build:
+      context: .
+      target: make_device_config
+    volumes:
+      - ./app:/app

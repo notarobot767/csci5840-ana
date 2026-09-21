@@ -9,5 +9,8 @@
 5840_guac/secrets/*
 5840_proxy/secrets/*
 5840_www/app/__pycache__
+5840_node_baseline/app/__pycache__
+5840_node_baseline/app/cfgs/*
+5840_node_baseline/app/roles/router/tasks/*
 running_configs/*
 startup_configs/*

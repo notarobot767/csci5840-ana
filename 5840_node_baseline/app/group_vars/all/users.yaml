@@ -1,0 +1,6 @@
+---
+# sample user credentials
+# change me!
+users:
+  - name: "neteng"
+    secret: "donttreadonme!!"

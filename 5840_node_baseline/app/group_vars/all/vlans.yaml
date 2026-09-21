@@ -1,0 +1,44 @@
+---
+vlans:
+  nipr:
+    - vlan: 2
+      name: NATIVE
+    - vlan: 7
+      name: UNTRUSTED_PNP
+    - vlan: 58
+      name: VOICE
+    - vlan: 59
+      name: DATA
+    - vlan: 169
+      name: INTERNET
+    - vlan: 176
+      name: INE_CT
+    - vlan: 222
+      name: NIPR_MGMT
+    - vlan: 324
+      name: NT2R_NFWH
+    - vlan: 666
+      name: PARKING_LOT
+    - vlan: 700
+      name: HSRL_UNDERLAY
+    - vlan: 958
+      name: COMM_VOICE
+    - vlan: 959
+      name: COMM_DATA
+  sipr:
+    - vlan: 2
+      name: NATIVE
+    - vlan: 7
+      name: UNTRUSTED_PNP
+    - vlan: 58
+      name: VOICE
+    - vlan: 59
+      name: DATA
+    - vlan: 176
+      name: INE_PT
+    - vlan: 222
+      name: SIPR_MGMT
+    - vlan: 324
+      name: ST2R_SFWH
+    - vlan: 666
+      name: PARKING_LOT

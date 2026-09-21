@@ -1,0 +1,77 @@
+---
+hostname: r1
+template: ceos.j2
+role: router
+interfaces:
+  Loopback0:
+    ipv6:
+      address: 2600:BAD:C0DE::3
+      netmask: 128
+      enable: true
+    ospfv3:
+      process:
+        21:
+          ipv6:
+            area: 0
+            network: point-to-point
+  Ethernet1:
+    description: "to s3"
+    switchport: false
+    ipv6:
+     enable: true
+    ospfv3:
+      process:
+        21:
+          ipv6:
+            area: 0
+            network: point-to-point
+            hello-interval: 1
+            dead-interval: 4
+  Ethernet2:
+    description: "to s1"
+    switchport: false
+    ipv6:
+     enable: true
+    isis:
+      enable: core
+      metric: 10
+      network: point-to-point
+route-map:
+  - map: RM-ISIS-TO-OSPF3
+    deny: 10
+    match:
+      - tag: 110
+  - map: RM-ISIS-TO-OSPF3
+    permit: 20
+    set:
+      - metric-type: type-1
+      - tag: 110
+  - map: RM-OSPF3-TO-ISIS
+    deny: 10
+    match:
+      - tag: 15
+  - map: RM-OSPF3-TO-ISIS
+    permit: 20
+    set:
+      - tag: 110
+
+isis:
+  core:
+    net: "49.0001.0000.0000.0001.00"
+    is-type: level-2
+    address-family:
+      - family: ipv6
+      - redistribute:
+        - "ospfv3 match internal route-map RM-OSPF3-TO-ISIS"
+        - "ospfv3 match external route-map RM-OSPF3-TO-ISIS"
+      - multi-topology: true
+    
+
+ospfv3:
+  21:
+    address-family:
+      - family: ipv6
+        rid: 1.1.1.0
+        passive-interface: default
+        redistribute:
+          - "isis level-2 route-map RM-ISIS-TO-OSPF3"

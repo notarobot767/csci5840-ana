@@ -1,0 +1,192 @@
+hostname {{ item.hostname | default(hostname | default('# MISSING! #')) }}
+system l1
+  unsupported speed action error
+  unsupported error-correction action error
+!
+#############
+# Enable IPv6
+#############
+ipv6 unicast-routing
+!
+service routing protocols model multi-agent
+no service interface inactive port-id allocation disabled
+!
+#######
+# users
+#######
+{% if users is defined %}
+{% for user in users %}
+username {{ user.name }} privilege 15 role network-admin secret sha512 {{ user.secret }}
+{% if user.ssh_key is defined %}
+username {{ user.name }} ssh-key {{ user.ssh_key }}
+{% endif %}
+{% endfor %}
+{% endif %}
+!
+aaa authorization exec default local
+no aaa authorization config-commands
+aaa accounting exec default start-stop logging
+!
+######
+# misc
+######
+spanning-tree mode rapid-pvst
+snmp-server community password ro
+!
+logging event login root
+logging buffered 51200 warnings
+logging host 2600:bad:c0de:cafe::10
+logging format timestamp high-resolution
+logging format hostname fqdn
+logging format sequence-numbers
+logging level default informational
+!
+management api http-commands
+  no shutdown
+!
+ip route 0.0.0.0/0 172.20.20.1
+!
+############
+# Interfaces
+############
+{% set intf_dict = item.interfaces | default(interfaces | default({})) %}
+{% for intf_name, intf in intf_dict.items() %}
+interface {{ intf_name }}
+{% if intf.description is defined %}
+  description {{ intf.description }}
+{% endif %}
+{% if intf.switchport is defined and not intf.switchport %}
+  no switchport
+{% endif %}
+{% if intf.ip is defined and intf.ip.address is defined %}
+  ip address {{ intf.ip.address }}/{{ intf.ip.netmask | default('24') }}
+{% endif %}
+{% if intf.ipv6 is defined %}
+{% if intf.ipv6.enable is defined and intf.ipv6.enable %}
+  ipv6 enable
+{% endif %}
+{% set ll = intf.ipv6.link_local | default(intf.ipv6['link-local'] | default(none)) %}
+{% if ll %}
+  ipv6 address {{ ll }} link-local
+{% endif %}
+{% if intf.ipv6.address is defined %}
+  ipv6 address {{ intf.ipv6.address }}/{{ intf.ipv6.netmask | default('64') }}
+{% endif %}
+{% endif %}
+{% if intf.isis is defined %}
+{% if intf.isis.enable is defined %}
+  isis enable {{ intf.isis.enable | upper }}
+{% endif %}
+{% if intf.isis.metric is defined %}
+  isis metric {{ intf.isis.metric }}
+{% endif %}
+{% if intf.isis.network is defined %}
+  isis network {{ intf.isis.network }}
+{% endif %}
+{% endif %}
+{% if intf.ospfv3 is defined and intf.ospfv3.process is defined %}
+{% for pid, pcfg in intf.ospfv3.process.items() %}
+{% if pcfg.ipv6 is defined %}
+  no ospfv3 passive-interface
+{% if pcfg.ipv6['hello-interval'] is defined %}
+  ospfv3 ipv6 hello-interval {{ pcfg.ipv6['hello-interval'] }}
+{% endif %}
+{% if pcfg.ipv6['dead-interval'] is defined %}
+  ospfv3 ipv6 dead-interval {{ pcfg.ipv6['dead-interval'] }}
+{% endif %}
+{% set net_type = pcfg.ipv6.network | default(pcfg.ipv6.netmork | default(none)) %}
+{% if net_type %}
+  ospfv3 ipv6 network {{ net_type }}
+{% endif %}
+{% if pcfg.ipv6.area is defined %}
+  ospfv3 ipv6 area {{ pcfg.ipv6.area if '.' in (pcfg.ipv6.area | string) else (pcfg.ipv6.area | string) + '.0.0.0' if pcfg.ipv6.area == 0 else pcfg.ipv6.area }}
+{% endif %}
+{% endif %}
+{% endfor %}
+{% endif %}
+!
+{% endfor %}
+############
+# Route-Maps
+############
+{% set rmaps = item['route-map'] | default(route_map | default([])) %}
+{% for rm in rmaps %}
+{% set action = 'deny' if rm.deny is defined else 'permit' %}
+{% set seq = rm.deny if rm.deny is defined else rm.permit %}
+route-map {{ rm.map }} {{ action }} {{ seq }}
+{% if rm.match is defined %}
+{% for m in rm.match %}
+{% if m.tag is defined %}
+  match tag {{ m.tag }}
+{% endif %}
+{% endfor %}
+{% endif %}
+{% if rm.set is defined %}
+{% for s in rm.set %}
+{% if s['metric-type'] is defined %}
+  set metric-type {{ s['metric-type'] }}
+{% endif %}
+{% if s.tag is defined %}
+  set tag {{ s.tag }}
+{% endif %}
+{% endfor %}
+{% endif %}
+!
+{% endfor %}
+######
+# ISIS
+######
+{% set isis_dict = item.isis | default(isis | default({})) %}
+{% for inst_name, icfg in isis_dict.items() %}
+router isis {{ inst_name | upper }}
+{% if icfg.net is defined %}
+  net {{ icfg.net }}
+{% endif %}
+{% if icfg['is-type'] is defined %}
+  is-type {{ icfg['is-type'] }}
+{% endif %}
+  !
+{% if icfg['address-family'] is defined %}
+{% for af in icfg['address-family'] %}
+{% if af.family is defined %}
+  address-family {{ af.family }} unicast
+{% endif %}
+{% if af.redistribute is defined %}
+{% for r in af.redistribute %}
+    redistribute {{ r }}
+{% endfor %}
+{% endif %}
+{% if af['multi-topology'] is defined and af['multi-topology'] %}
+    multi-topology
+{% endif %}
+{% endfor %}
+{% endif %}
+!
+{% endfor %}
+########
+# OSPFv3
+########
+{% set ospf_dict = item.ospfv3 | default(ospfv3 | default({})) %}
+{% if ospf_dict %}
+router ospfv3
+{% for pid, pdata in ospf_dict.items() %}
+{% if pdata['address-family'] is defined %}
+{% for af in pdata['address-family'] %}
+  address-family {{ af.family }}
+{% if af.rid is defined %}
+    router-id {{ af.rid }}
+{% endif %}
+{% if af['passive-interface'] is defined %}
+    passive-interface {{ af['passive-interface'] }}
+{% endif %}
+{% if af.redistribute is defined %}
+{% for r in af.redistribute %}
+    redistribute {{ r }}
+{% endfor %}
+{% endif %}
+{% endfor %}
+{% endif %}
+{% endfor %}
+{% endif %}
+!
+end

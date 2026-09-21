@@ -1,0 +1,1280 @@
+###########
+# setup SSH
+###########
+hostname {{ item.hostname | default('# MISSING! #') }}
+ip domain name {{ domain.nipr | default('# MISSING! #') }}
+!
+system mode insecure
+!
+vrf definition MGMT_INT
+  address-family ipv4
+!
+interface GigabitEthernet 1
+  no ip proxy-arp
+  no ip redirects
+  no shut
+!
+interface GigabitEthernet 1.222
+  description NIPR_MGMT
+  encapsulation dot1Q 222
+  vrf forwarding MGMT_INT
+  !
+  ip address {{ item.nipr.interface.mgmt.ip.address | default('# MISSING! #') }} {{ item.nipr.interface.mgmt.ip.netmask | default('# MISSING! #') }}
+  no ip proxy-arp
+  no ip redirects
+  !
+  no shutdown
+!
+# careful not to overwrite your keys!
+crypto key generate ec keysize 384 label MGMT_SSH
+ip ssh rsa keypair MGMT_SSH
+!
+# users from user list
+{% for user in users %}
+username {{ user.name }} privilege 15 algorithm-type sha256 secret {{ user.secret }}
+{% endfor %}
+!
+ip access-list standard MGMT_PROTECT
+  10 permit {{ item.nipr.interface.mgmt.ip.address | default('# MISSING! #') }} {{ item.nipr.interface.mgmt.ip.wildcard | default('# MISSING! #') }}
+  20 permit 143.86.179.226 0.0.0.31
+  999 deny any log
+!
+line vty 0 4
+  transport input ssh
+  transport output ssh
+  login local
+  logging synchronous
+  access-class MGMT_PROTECT in vrfname MGMT_INT
+!
+##################
+# Remote mgmt user
+##################
+username guac privilege 15
+!
+ip ssh pubkey-chain
+  username guac
+    key-hash ssh-ed25519 6B466145C8295E0BF2902E1BC8814EE0811ADD6DCE532082CB102895AD1EFDBB 359ttsb
+!
+########################
+# Default route for MGMT
+########################
+ip route vrf MGMT_INT 0.0.0.0 0.0.0.0 GigabitEthernet 1.222 {{ item.nipr.interface.mgmt.ip.gateway | default('# MISSING! #') }}
+!
+##############
+# restrict SSH
+##############
+ip ssh server algorithm hostkey ecdsa-sha2-nistp521 ecdsa-sha2-nistp384
+ip ssh server algorithm kex curve25519-sha256 curve25519-sha256@libssh.org ecdh-sha2-nistp521 ecdh-sha2-nistp384
+ip ssh server algorithm encryption chacha20-poly1305@openssh.com aes256-gcm aes256-gcm@openssh.com aes128-gcm aes128-gcm@openssh.com aes256-ctr aes192-ctr aes128-ctr
+ip ssh server algorithm mac hmac-sha2-512-etm@openssh.com hmac-sha2-256-etm@openssh.com hmac-sha2-512 hmac-sha2-256
+!
+ip ssh source-interface GigabitEthernet 1.222
+ip ssh version 2
+ip ssh dscp 40
+!
+##################
+# restrict console
+##################
+line console 0
+  logging synchronous
+  transport output ssh
+!
+#############
+# disable aux
+#############
+line aux 0
+  no exec
+  transport input none
+!
+######
+# misc
+######
+ip tcp path-mtu-discovery
+no ip domain lookup
+no ip boot server
+no ip bootp server
+no ip dns server
+no ip finger
+no ip forward-protocol nd
+no ip http server
+no ip http secure-server
+no ip rcmd rcp-enable
+no ip rcmd rsh-enable
+no ip source-route
+!
+ip arp gratuitous none
+no ip gratuitous-arps
+!
+service nagle
+service tcp-keepalives-in
+service tcp-keepalives-out
+service password-encryption
+!
+no service config
+no service finger
+no service tcp-small-servers
+no service udp-small-servers
+no service pad
+no service call-home
+no service config
+!
+no boot network
+vtp mode off
+spanning-tree mode rapid-pvst
+!
+#############
+# Enable IPv6
+#############
+ipv6 unicast-routing
+ipv6 multicast-routing
+!
+##########################
+# Cisco Express Forwarding
+##########################
+ip cef distributed
+ipv6 cef distributed
+!
+############
+# enable cdp
+############
+cdp run
+!
+###############
+# rate-limiting
+###############
+ip icmp rate-limit unreachable 500 log
+ip icmp rate-limit unreachable df 500 log
+ip igmp limit 500
+!
+#################
+# NIPR Router VRF
+#################
+vrf definition NIPR_ROUTER
+  address-family ipv4
+  address-family ipv6
+!
+########
+# OSPFv2
+########
+router ospf 21 vrf NIPR_ROUTER
+  passive-interface default
+  area 1 range {{ item.nipr.ip_space.ip.network | default('# MISSING! #') }} {{ item.nipr.ip_space.ip.netmask | default('# MISSING! #') }}
+  router-id {{ item.nipr.interface.loopback_7.ip.address | default('# MISSING! #') }}
+!
+########
+# OSPFv3
+########
+router ospfv3 21
+  address-family ipv4 unicast
+    passive-interface default
+    router-id {{ item.xless.interface.loopback_0.ip.address | default('# MISSING! #') }}
+  exit-address-family
+!
+############
+# loopback 0
+############
+interface Loopback 0
+  description xless loop
+  !
+  ip address {{ item.xless.interface.loopback_0.ip.address | default('# MISSING! #') }} 255.255.255.255
+  no ip redirects
+  no ip proxy-arp
+  no ip unreachables
+  ip pim sparse-mode
+  !
+  ipv6 enable
+  no ipv6 redirects
+  !
+  ospfv3 21 ipv4 area 0
+  ospfv3 21 ipv4 network point-to-point
+  !
+  no shutdown
+!
+############
+# loopback 7
+############
+interface Loopback 7
+  description nipr
+  vrf forwarding NIPR_ROUTER
+  !
+  ip address {{ item.nipr.interface.loopback_7.ip.address | default('# MISSING! #') }} 255.255.255.255
+  no ip redirects
+  no ip proxy-arp
+  ip pim sparse-mode
+  !
+  ip ospf 21 area 1
+  ip ospf network point-to-point
+  !
+  no shutdown
+!
+#################
+# NIPR T2R to FWH
+#################
+interface GigabitEthernet 1.324
+  description NT2R to NFWH
+  encapsulation dot1Q 324
+  vrf forwarding NIPR_ROUTER
+  !
+  ip address {{ item.nipr.interface.t2r_fwh.ip.address | default('# MISSING! #') }} {{ item.nipr.interface.t2r_fwh.ip.netmask | default('# MISSING! #') }}
+  no ip redirects
+  no ip proxy-arp
+  !
+  no shutdown
+  !
+ip route vrf NIPR_ROUTER {{ item.nipr.ip_space.ip.network | default('# MISSING! #') }} {{ item.nipr.ip_space.ip.netmask | default('# MISSING! #') }} GigabitEthernet 1.324 {{ item.nipr.interface.t2r_fwh.ip.gateway | default('# MISSING! #') }}
+# ensure owned NIPR LAN IP space queries never sent over WAN
+# this prevents trying to route externally to IP Space owned by node
+!
+###########
+# multicast
+###########
+ip multicast-routing distributed
+ip multicast-routing vrf NIPR_ROUTER distributed
+!
+ip pim spt-threshold infinity
+ip pim register-rate-limit 512000
+ip pim register-source Loopback0
+!
+ip access-list standard ACL_CANDIDATE_RP_MCG
+  remark Longer-Bit match Adjusted per CI Type
+  remark THIS NODE CAN BE RP FOR THESE GROUPS
+  permit 224.0.0.0 15.255.255.255
+!
+ip pim vrf NIPR_ROUTER spt-threshold infinity
+ip pim vrf NIPR_ROUTER bsr-candidate Loopback7 4 1
+ip pim vrf NIPR_ROUTER rp-candidate Loopback7 group-list ACL_CANDIDATE_RP_MCG priority 255
+ip pim vrf NIPR_ROUTER register-rate-limit 512000
+ip pim vrf NIPR_ROUTER register-source Loopback7
+!
+########
+# INE CT
+########
+interface GigabitEthernet 1.176
+  shutdown
+  description INE-CT
+  encapsulation dot1Q 176
+  !
+  ip addr {{ item.xless.interface.taclane_ct.ip.address | default('# MISSING! #') }} {{ item.xless.interface.taclane_ct.ip.netmask | default('# MISSING! #') }}
+  ip mtu 1484
+  ip tcp adjust-mss 1444
+  ip pim sparse-mode
+  no ip proxy-arp
+  no ip redirects
+  no ip unreachables
+  !
+  ipv6 enable
+  ipv6 mtu 1484
+  no ipv6 redirects
+  !
+  ospfv3 21 ipv4 area 0 
+  !
+  no shutdown
+!
+#####################
+# XLESS Untrusted PnP
+#####################
+interface GigabitEthernet 1.7
+  description XLESS Untrusted PnP Connection
+  encapsulation dot1Q 7
+  !
+  ip addr {{ item.xless.interface.pnp.ip.address | default('# MISSING! #') }} {{ item.xless.interface.pnp.ip.netmask | default('# MISSING! #') }}
+  ip pim sparse-mode
+  no ip proxy-arp
+  no ip redirects
+  !
+  ipv6 enable
+  no ipv6 redirects
+  !
+  ospfv3 21 ipv4 area 0
+  !
+  no shutdown
+!
+################
+# IVPN Interface
+################
+vrf definition INET_UNDERLAY
+  address-family ipv4
+  address-family ipv6
+!
+object-group network AZUGAIT3
+  host 52.181.181.174
+object-group network RHN3GAIT
+  host 157.96.84.211
+object-group network AZUGAIT_IVPN
+  group-object AZUGAIT3
+  group-object RHN3GAIT
+!
+ip access-list extended INET_ACL_IN
+  permit udp any eq bootps any eq bootpc
+  permit udp object-group AZUGAIT_IVPN eq isakmp any eq isakmp
+  permit udp object-group AZUGAIT_IVPN eq non500-isakmp any eq non500-isakmp
+  permit icmp host 198.97.190.53 any echo-reply
+!
+interface GigabitEthernet 1.169
+  description INET_UNDERLAY
+  vrf forwarding INET_UNDERLAY
+  encapsulation dot1Q 169
+  !
+  ip access-group INET_ACL_IN in
+  ip address dhcp
+  no ip dhcp client request domain-name
+  no ip dhcp client request dns-nameserver
+  no ip proxy-arp
+  no ip redirects
+  !
+  no shutdown
+!
+#############
+# IVPN Crypto
+#############
+crypto logging ikev2
+crypto logging session
+crypto isakmp enable
+!
+crypto pki trustpoint GAITIVPN
+  enrollment terminal
+  serial-number none
+  fqdn none
+  ip-address none
+  subject-name cn=dynamic.jntc.army.mil,ou={{ item.node.number | default('# MISSING! #') }}
+  revocation-check none
+  eckeypair GAITEC
+  hash sha384
+!
+interface tunnel 47
+!
+crypto ikev2 client flexvpn GAIT
+  peer 1 157.96.84.211   !RHN3GAIT (Liberty RHN On-Premise)
+  peer 2 52.181.181.174  !AZUGAIT3 (Azure-CONUS-East)
+  peer 3 52.182.34.85    !AZURE6   (Azure-CONUS-East)
+  client connect Tunnel47
+!
+ip route vrf INET_UNDERLAY 52.181.181.174 255.255.255.255 GigabitEthernet 1.169 dhcp   !AZUGAIT3 (Azure-CONUS-East)
+ip route vrf INET_UNDERLAY 157.96.84.211 255.255.255.255 GigabitEthernet 1.169 dhcp    !RHN3GAIT (Liberty RHN On-Premise)
+ip route vrf INET_UNDERLAY 198.97.190.53 255.255.255.255 GigabitEthernet 1.169 dhcp    !DoD DNS IP To test internet connectivity
+ip route vrf INET_UNDERLAY 0.0.0.0 0.0.0.0 null0
+!
+crypto pki certificate map CERT_MAP_GAIT 10
+ subject-name co ou = gait
+!
+crypto ikev2 proposal IKEV2_PROPOSAL_IVPN
+  encryption aes-cbc-256
+  integrity sha384
+  group 20
+no crypto ikev2 proposal default
+!
+crypto ikev2 policy IKEV2_POLICY_IVPN
+  match fvrf INET_UNDERLAY
+  proposal IKEV2_PROPOSAL_IVPN
+no crypto ikev2 policy default
+!
+crypto ikev2 profile IKEV2_PROFILE_IVPN
+  description MATCH AZURE CERTIFICATE FOR XLESS-OVER-INET BACKHAUL
+  match certificate CERT_MAP_GAIT
+  match fvrf INET_UNDERLAY
+  identity local dn
+  authentication local ecdsa-sig
+  authentication remote ecdsa-sig
+  pki trustpoint GAITIVPN
+  dpd 20 5 periodic
+!
+crypto ipsec transform-set IPSEC_XFORM_AES256_SHA384_IVPN esp-aes 256 esp-sha384-hmac
+  mode transport require
+no crypto ipsec transform-set default
+!
+crypto ipsec profile IPSEC_PROFILE_IVPN_GENERIC
+  description MATCH XFORM AND IKE PARAMETERS FOR INTERNET VPN
+  set transform-set IPSEC_XFORM_AES256_SHA384_IVPN
+  set ikev2-profile IKEV2_PROFILE_IVPN
+no crypto ipsec profile default
+!
+crypto ikev2 fragmentation mtu 1392
+!
+key chain KC_OSPFV3_XCOMX
+  key 1
+    key-string OSPFXCOMX
+    cryptographic-algorithm hmac-sha-512
+!
+#############
+# IVPN Tunnel
+#############
+interface Tunnel 47
+  shutdown
+  description GAIT IVPN
+  !
+  ip unnumbered Loopback0
+  ip mtu 1392
+  ip tcp adjust-mss 1352
+  ip pim sparse-mode
+  no ip redirects
+  no ip proxy-arp
+  !
+  ipv6 enable
+  ipv6 mtu 1392
+  no ipv6 redirects
+  !
+  ospfv3 21 cost 20000
+  ospfv3 21 ipv4 area 0
+  ospfv3 21 ipv4 network point-to-point
+  ospfv3 authentication null
+  ospfv3 21 ipv4 authentication key-chain KC_OSPFV3_XCOMX
+  !
+  tunnel vrf INET_UNDERLAY
+  tunnel source GigabitEthernet 1.169
+  tunnel destination dynamic
+  tunnel protection ipsec profile IPSEC_PROFILE_IVPN_GENERIC
+  !
+  no shutdown
+!
+router ospfv3 21
+  address-family ipv4 unicast
+    no passive-interface Tunnel47
+  exit-address-family
+!
+################
+# HSRL Interface
+################
+object-group network OG_NET_HSRL_UNDERLAY
+  description HSRL_UNDERLAY NETWORK
+  host 169.254.0.1
+!
+object-group service OG_SVC_HSRL_SERVICES
+  udp eq bootpc 
+  udp eq isakmp
+  esp
+  udp eq non500-isakmp
+  icmp echo
+  icmp echo-reply
+!
+ip access-list extended ACL_HSRL_UNDERLAY_IN
+  10 permit object-group OG_SVC_HSRL_SERVICES object-group OG_NET_HSRL_UNDERLAY any
+!
+vrf definition HSRL_UNDERLAY
+  address-family ipv4
+!
+interface GigabitEthernet 1.700
+  description HSRL_UNDERLAY
+  vrf forwarding HSRL_UNDERLAY
+  encapsulation dot1Q 700
+  !
+{% if item.hsrl.interface.ip.address is defined %}
+  ip address {{ item.hsrl.interface.ip.address }} 255.255.255.0
+{% endif %}
+  ip access-group ACL_HSRL_UNDERLAY_IN in
+  no ip proxy-arp
+  no ip redirects
+  !
+  no shutdown
+!
+#############
+# HSRL Crypto
+#############
+crypto ikev2 proposal IKEV2_PROPOSAL_AES256_PRF512_SHA384_GRP20 
+  encryption aes-cbc-256
+  prf sha512
+  integrity sha384
+  group 20
+no crypto ikev2 proposal default
+!
+crypto ikev2 policy IKEV2_POLICY_ALL_GAIT 
+  match fvrf HSRL_UNDERLAY
+  proposal IKEV2_PROPOSAL_AES256_PRF512_SHA384_GRP20
+no crypto ikev2 policy default
+!
+crypto ikev2 keyring IKEV2_KEYRING_HSRL_ALL
+  peer GAIT.HSRL.UPLINK
+    address 169.254.0.1
+    identity fqdn GAIT.HSRL.UPLINK
+    pre-shared-key FLEX.{{ item.node.number | default('# MISSING! #') }}
+!
+crypto ikev2 profile IKEV2_PROFILE_HSRL_ALL
+  match fvrf HSRL_UNDERLAY
+  match identity remote fqdn GAIT.HSRL.UPLINK
+  identity local fqdn {{ item.node.number | default('# MISSING! #') }}.HSRL.GAIT
+  authentication remote pre-share
+  authentication local pre-share
+  keyring local IKEV2_KEYRING_HSRL_ALL
+  dpd 20 5 periodic
+!
+crypto ipsec transform-set IPSEC_XFORM_GCM256_TRANSPORT esp-gcm 256 
+  mode transport require
+crypto ipsec transform-set IPSEC_XFORM_GCM256_TUNNEL esp-gcm 256 
+  mode tunnel
+no crypto ipsec transform-set default
+!
+crypto ipsec profile IPSEC_PROFILE_HSRL_TRANSPORT
+  set security-association lifetime seconds 28800
+  set transform-set IPSEC_XFORM_GCM256_TRANSPORT 
+  set pfs group20
+  set ikev2-profile IKEV2_PROFILE_HSRL_ALL
+!
+crypto ipsec profile IPSEC_PROFILE_HSRL_TUNNEL
+  set security-association lifetime seconds 28800
+  set transform-set IPSEC_XFORM_GCM256_TUNNEL 
+  set pfs group20
+  set ikev2-profile IKEV2_PROFILE_HSRL_ALL
+no crypto ipsec profile default
+!
+#############
+# HSRL tunnel
+#############
+interface Tunnel8191812
+  shutdown
+  description GAIT HSRL
+  !
+  ip address negotiated
+  ip mtu 1392
+  ip tcp adjust-mss 1352
+  ip pim sparse-mode
+  no ip redirects
+  no ip proxy-arp
+  !
+  ipv6 enable
+  ipv6 mtu 1392
+  no ipv6 redirects
+  !
+  ospfv3 authentication null
+  ospfv3 21 network point-to-point
+  ospfv3 21 ipv4 area 0
+  !
+  tunnel source GigabitEthernet 1.700
+  tunnel destination 169.254.0.1
+  tunnel key {{ item.node.number | default('# MISSING! #') }}
+  tunnel vrf HSRL_UNDERLAY
+  tunnel protection ipsec profile IPSEC_PROFILE_HSRL_TUNNEL
+  !
+  no shutdown
+!
+router ospfv3 21
+  address-family ipv4 unicast
+    no passive-interface Tunnel8191812
+  exit-address-family
+!
+#############
+# NIPR Crypto
+#############
+crypto ikev2 proposal IKEV2_PROPOSAL_NIPR
+  encryption aes-cbc-256
+  integrity sha384
+  group 20
+no crypto ikev2 proposal default
+!
+crypto ikev2 policy IKEV2_POLICY_NIPR 
+  proposal IKEV2_PROPOSAL_NIPR
+!
+crypto ikev2 keyring IKEV2_KEYRING_NIPR
+  peer tactical
+    description KEYRING FOR NIPR Tunnel
+    address 0.0.0.0 0.0.0.0
+    pre-shared-key local {{ item.nipr.interface.tunnel.ikev2.key | default('# MISSING! #') }}
+    pre-shared-key remote {{ item.nipr.interface.tunnel.ikev2.key | default('# MISSING! #') }}
+!
+crypto ikev2 profile IKEV2_PROFILE_NIPR
+  description NIPR IKE PROFILE
+  match identity remote any
+  authentication remote pre-share
+  authentication local pre-share
+  keyring local IKEV2_KEYRING_NIPR
+  dpd 20 5 periodic
+!
+crypto ipsec transform-set IPSEC_XFORM_AES256_SHA384_NIPR esp-aes 256 esp-sha384-hmac
+  mode transport
+no crypto ipsec transform-set default
+!
+crypto ipsec profile IPSEC_PROFILE_NIPR
+  description MATCH XFORM AND IKE PARAMETERS
+  set transform-set IPSEC_XFORM_AES256_SHA384_NIPR 
+  set ikev2-profile IKEV2_PROFILE_NIPR
+no crypto ipsec profile default
+!
+#############
+# NIPR Tunnel
+#############
+interface tunnel {{ item.nipr.interface.tunnel.number | default('# MISSING! #') }}
+  shutdown
+  description NIPR over Colorless Tunnel
+  vrf forwarding NIPR_ROUTER
+  !
+  qos pre-classify
+  !
+  ip address {{ item.nipr.interface.tunnel.ip.address | default('# MISSING! #') }} {{ item.nipr.interface.tunnel.ip.netmask | default('# MISSING! #') }}
+  no ip redirects
+  no ip proxy-arp
+  !
+  ip nhrp nhs {{ item.nipr.interface.tunnel.ip.rhn_tunnel_ip | default('# MISSING! #') }} nbma {{ item.nipr.interface.tunnel.ip.rhn_anycast_ip | default('# MISSING! #') }} multicast
+  ip nhrp redirect
+  ip nhrp shortcut
+  ip nhrp network-id {{ item.nipr.interface.tunnel.number | default('# MISSING! #') }}
+  ip nhrp authentication {{ item.nipr.interface.tunnel.number | default('# MISSING! #') }}
+  no ip nhrp map multicast dynamic
+  !
+  # match MTU/MSS to tunnel info in ACAS
+  ip mtu {{ item.nipr.interface.tunnel.ip.mtu | default('# MISSING! #') }}
+  ip tcp adjust-mss {{ item.nipr.interface.tunnel.ip.mss | default('# MISSING! #') }}
+  ip pim nbma-mode
+  ip pim sparse-mode
+  qos pre-classif
+  !
+  ip ospf authentication message-digest
+  ip ospf message-digest-key 1 md5 {{ item.nipr.interface.tunnel.ospf.key | default('# MISSING! #') }}
+  ip ospf network point-to-multipoint
+  ip ospf 21 area 0
+  ip ospf cost {{ item.nipr.interface.tunnel.ospf.cost | default('# MISSING! #') }}
+  !
+  tunnel mode gre multipoint
+  tunnel protection ipsec profile IPSEC_PROFILE_NIPR
+  tunnel key {{ item.nipr.interface.tunnel.number | default('# MISSING! #') }}
+  tunnel source loop 0
+  !
+  no shutdown
+!
+router ospf 21 vrf NIPR_ROUTER
+  no passive-interface Tunnel{{ item.nipr.interface.tunnel.number | default('# MISSING! #') }}
+!
+#########
+# logging
+#########
+service timestamps log datetime msec show-timezone year
+login on-failure log
+login on-success log
+ip ssh logging events
+archive
+  log config
+  hidekeys
+  notify syslog
+  logging enable
+!
+logging buffered 51200 warnings
+logging userinfo
+logging source-interface Loopback7 vrf NIPR_ROUTER
+logging host 143.86.179.202 vrf NIPR_ROUTER session-id hostname sequence-num-session
+!
+#####
+# ntp
+#####
+ntp logging
+ntp authentication-key 1232 hmac-sha2-256 02342C75252F3F13627A3954363F33 7
+ntp authentication-key 1231 md5 00363B283C772E353C0F787E44342142 7
+ntp authenticate
+ntp trusted-key 1232
+ntp trusted-key 1231
+ntp orphan 4
+ntp source Loopback7
+ntp server 10.180.255.210 key 1231 source Loopback0
+ntp server vrf NIPR_ROUTER 144.105.205.211 key 1232 prefer
+!
+#########
+# Netflow
+#########
+flow record BASELINE
+  match ipv4 source address
+  match ipv4 destination address
+  match ipv4 protocol
+  match transport source-port
+  match transport destination-port
+  collect counter bytes long
+  collect counter packets long
+  collect flow direction
+  collect interface input
+  collect interface output
+  collect ipv4 dscp
+  collect ipv4 header-length
+  collect ipv4 tos
+  collect ipv4 ttl
+  collect transport tcp flags
+  collect ipv4 fragmentation flags
+  collect transport icmp ipv4 type
+  collect transport icmp ipv4 code
+  collect transport igmp type
+!
+flow exporter 359TTSB
+  description 359th Theater Tactical Signal Brigade
+  destination 143.86.179.202 vrf NIPR_ROUTER
+  source loopback7
+  transport udp 2055
+  export-protocol ipfix
+!
+flow monitor BASELINE
+  exporter 359TTSB
+  record BASELINE
+  cache timeout active 60
+  cache timeout inactive 15
+!
+interface Tunnel{{ item.nipr.interface.tunnel.number | default('# MISSING! #') }}
+  ip flow monitor BASELINE input
+  ip flow monitor BASELINE output
+!
+interface Tunnel47
+  ip flow monitor BASELINE input
+  ip flow monitor BASELINE output
+!
+interface Tunnel8191812
+  ip flow monitor BASELINE input
+  ip flow monitor BASELINE output
+!
+######
+# SNMP
+######
+snmp ifmib ifindex persist
+snmp-server view ALL-ACCESS iso included
+snmp-server group neteng v3 priv read ALL-ACCESS access MGMT_PROTECT
+{% for user in snmp %}
+snmp-server user {{ user.username }} neteng v3 auth sha {{ user.auth_pw }} priv aes 256 {{ user.priv_pw }}
+{% endfor %}
+!
+{% if item.nipr.voip is defined %}
+#################
+# voice interface
+#################
+vrf definition NIPR_VOICE
+  address-family ipv4
+!
+interface GigabitEthernet 1.58
+  description NIPR Voice
+  encapsulation dot1Q 58
+  vrf forwarding NIPR_VOICE
+  !
+  ip addr {{ item.nipr.interface.voice.ip.address | default('# MISSING! #') }} {{ item.nipr.interface.voice.ip.netmask | default('# MISSING! #') }}
+  no ip proxy-arp
+  no ip redirects
+  !
+  no shutdown
+!
+ip route vrf NIPR_VOICE 0.0.0.0 0.0.0.0 GigabitEthernet 1.58 {{ item.nipr.interface.voice.ip.gateway | default('# MISSING! #') }}
+!
+ip tftp source-interface GigabitEthernet 1.58
+ip tftp blocksize 1468
+!
+##############
+# SIP firmware
+##############
+ip http client source-interface GigabitEthernet 1.222
+archive tar /xtract http://x.x.x.x/voip/voip_bulk_2026-07-05.tar flash:voip
+# locally host and copy bulk tftp firmware to router in flash:voip
+!
+# allow rtr to advertise files via tftp from root
+tftp-server flash:voip/cmterm-78xx.14-4-1-0301-6/kern2.78xx.14-4-1-0301-6.sbn alias kern2.78xx.14-4-1-0301-6.sbn
+tftp-server flash:voip/cmterm-78xx.14-4-1-0301-6/kern78xx.14-4-1-0301-6.sbn alias kern78xx.14-4-1-0301-6.sbn
+tftp-server flash:voip/cmterm-78xx.14-4-1-0301-6/rootfs2.78xx.14-4-1-0301-6.sbn alias rootfs2.78xx.14-4-1-0301-6.sbn
+tftp-server flash:voip/cmterm-78xx.14-4-1-0301-6/rootfs78xx.14-4-1-0301-6.sbn alias rootfs78xx.14-4-1-0301-6.sbn
+tftp-server flash:voip/cmterm-78xx.14-4-1-0301-6/sboot2.78xx.14-4-1-0301-6.sbn alias sboot2.78xx.14-4-1-0301-6.sbn
+tftp-server flash:voip/cmterm-78xx.14-4-1-0301-6/sboot78xx.14-4-1-0301-6.sbn alias sboot78xx.14-4-1-0301-6.sbn
+tftp-server flash:voip/cmterm-78xx.14-4-1-0301-6/sip78xx.14-4-1-0301-6.loads alias sip78xx.14-4-1-0301-6.loads
+!
+tftp-server flash:voip/cmterm-88xx.14-4-1-0301-6/boot1288xx.BE-01-007.sbn alias boot1288xx.BE-01-007.sbn
+tftp-server flash:voip/cmterm-88xx.14-4-1-0301-6/fbi88xx.BE-01-012.sbn alias fbi88xx.BE-01-012.sbn
+tftp-server flash:voip/cmterm-88xx.14-4-1-0301-6/kern88xx.14-4-1-0301-6.sbn alias kern88xx.14-4-1-0301-6.sbn
+tftp-server flash:voip/cmterm-88xx.14-4-1-0301-6/kern288xx.14-4-1-0301-6.sbn alias kern288xx.14-4-1-0301-6.sbn
+tftp-server flash:voip/cmterm-88xx.14-4-1-0301-6/kern388xx.14-4-1-0301-6.sbn alias kern388xx.14-4-1-0301-6.sbn
+tftp-server flash:voip/cmterm-88xx.14-4-1-0301-6/m0patch288xx.BE-01-001.sbn alias m0patch288xx.BE-01-001.sbn
+tftp-server flash:voip/cmterm-88xx.14-4-1-0301-6/preloader88xx.BE-01-008.sbn alias preloader88xx.BE-01-008.sbn
+tftp-server flash:voip/cmterm-88xx.14-4-1-0301-6/rootfs88xx.14-4-1-0301-6.sbn alias rootfs88xx.14-4-1-0301-6.sbn
+tftp-server flash:voip/cmterm-88xx.14-4-1-0301-6/rootfs288xx.14-4-1-0301-6.sbn alias rootfs288xx.14-4-1-0301-6.sbn
+tftp-server flash:voip/cmterm-88xx.14-4-1-0301-6/rootfs388xx.14-4-1-0301-6.sbn alias rootfs388xx.14-4-1-0301-6.sbn
+tftp-server flash:voip/cmterm-88xx.14-4-1-0301-6/sb288xx.BE-01-029.sbn alias sb288xx.BE-01-029.sbn
+tftp-server flash:voip/cmterm-88xx.14-4-1-0301-6/sb2288xx.BE-01-016.sbn alias sb2288xx.BE-01-016.sbn
+tftp-server flash:voip/cmterm-88xx.14-4-1-0301-6/sb2388xx.BE-01-033.sbn alias sb2388xx.BE-01-033.sbn
+tftp-server flash:voip/cmterm-88xx.14-4-1-0301-6/sip88xx.14-4-1-0301-6.loads alias sip88xx.14-4-1-0301-6.loads
+tftp-server flash:voip/cmterm-88xx.14-4-1-0301-6/ssb288xx.BE-01-007.sbn alias ssb288xx.BE-01-007.sbn
+tftp-server flash:voip/cmterm-88xx.14-4-1-0301-6/vc488xx.14-4-1-0301-6.sbn alias vc488xx.14-4-1-0301-6.sbn
+!
+tftp-server flash:voip/cmterm-8845_65.14-4-1-0001-36/fbi8845_65.BEV-01-006.sbn alias fbi8845_65.BEV-01-006.sbn
+tftp-server flash:voip/cmterm-8845_65.14-4-1-0001-36/kern8845_65.14-4-1-0001-36.sbn alias kern8845_65.14-4-1-0001-36.sbn
+tftp-server flash:voip/cmterm-8845_65.14-4-1-0001-36/rootfs8845_65.14-4-1-0001-36.sbn alias rootfs8845_65.14-4-1-0001-36.sbn
+tftp-server flash:voip/cmterm-8845_65.14-4-1-0001-36/sb28845_65.BEV-01-021.sbn alias sb28845_65.BEV-01-021.sbn
+tftp-server flash:voip/cmterm-8845_65.14-4-1-0001-36/sip8845_65.14-4-1-0001-36.loads alias sip8845_65.14-4-1-0001-36.loads
+tftp-server flash:voip/cmterm-8845_65.14-4-1-0001-36/vc48845_65.14-4-1-0001-36.sbn alias vc48845_65.14-4-1-0001-36.sbn
+!
+tftp-server flash:voip/cmterm-8831-sip.9-3-3-TO-10-3-1/kern8831.9-3-3-TO-10-3-1.sbn alias kern8831.9-3-3-TO-10-3-1.sbn
+tftp-server flash:voip/cmterm-8831-sip.9-3-3-TO-10-3-1/rootfs8831.9-3-3-TO-10-3-1.sbn alias rootfs8831.9-3-3-TO-10-3-1.sbn
+tftp-server flash:voip/cmterm-8831-sip.9-3-3-TO-10-3-1/sboot8831.9-3-3-TO-10-3-1.sbn alias sboot8831.9-3-3-TO-10-3-1.sbn
+tftp-server flash:voip/cmterm-8831-sip.9-3-3-TO-10-3-1/sip8831.9-3-3-TO-10-3-1.loads alias sip8831.9-3-3-TO-10-3-1.loads
+!
+tftp-server flash:voip/cmterm-8831-sip.10-3-1SR7-2/kern8831.10-3-1SR7-2.sbn alias kern8831.10-3-1SR7-2.sbn
+tftp-server flash:voip/cmterm-8831-sip.10-3-1SR7-2/rootfs8831.10-3-1SR7-2.sbn alias rootfs8831.10-3-1SR7-2.sbn
+tftp-server flash:voip/cmterm-8831-sip.10-3-1SR7-2/sboot8831.10-3-1SR7-2.sbn alias sboot8831.10-3-1SR7-2.sbn
+tftp-server flash:voip/cmterm-8831-sip.10-3-1SR7-2/sip8831.10-3-1SR7-2.loads alias sip8831.10-3-1SR7-2.loads
+!
+tftp-server flash:voip/cmterm-8832.14-4-1-0301-6/firmware28832.14-4-1-0301-6.sbn alias firmware28832.14-4-1-0301-6.sbn
+tftp-server flash:voip/cmterm-8832.14-4-1-0301-6/kern8832.14-4-1-0301-6.sbn alias kern8832.14-4-1-0301-6.sbn
+tftp-server flash:voip/cmterm-8832.14-4-1-0301-6/kern28832.14-4-1-0301-6.sbn alias kern28832.14-4-1-0301-6.sbn
+tftp-server flash:voip/cmterm-8832.14-4-1-0301-6/key28832.14-4-1-0301-6.sbn alias key28832.14-4-1-0301-6.sbn
+tftp-server flash:voip/cmterm-8832.14-4-1-0301-6/loader8832.VO-01-005.sbn alias loader8832.VO-01-005.sbn
+tftp-server flash:voip/cmterm-8832.14-4-1-0301-6/loader28832.VO0-00-003.sbn alias loader28832.VO0-00-003.sbn
+tftp-server flash:voip/cmterm-8832.14-4-1-0301-6/oemloader28832.14-4-1-0301-6.sbn alias oemloader28832.14-4-1-0301-6.sbn
+tftp-server flash:voip/cmterm-8832.14-4-1-0301-6/rootfs8832.14-4-1-0301-6.sbn alias rootfs8832.14-4-1-0301-6.sbn
+tftp-server flash:voip/cmterm-8832.14-4-1-0301-6/rootfs28832.14-4-1-0301-6.sbn alias rootfs28832.14-4-1-0301-6.sbn
+tftp-server flash:voip/cmterm-8832.14-4-1-0301-6/sb28832.VO-01-016.sbn alias sb28832.VO-01-016.sbn
+tftp-server flash:voip/cmterm-8832.14-4-1-0301-6/sb228832.14-4-1-0301-6.sbn alias sb228832.14-4-1-0301-6.sbn
+tftp-server flash:voip/cmterm-8832.14-4-1-0301-6/sip8832.14-4-1-0301-6.loads alias sip8832.14-4-1-0301-6.loads
+tftp-server flash:voip/cmterm-8832.14-4-1-0301-6/trustzone28832.14-4-1-0301-6.sbn alias trustzone28832.14-4-1-0301-6.sbn
+!
+tftp-server flash:voip/cmterm-7941_7961-sip.9-3-1SR4-1S/apps41.9-3-1ES26.sbn alias apps41.9-3-1ES26.sbn
+tftp-server flash:voip/cmterm-7941_7961-sip.9-3-1SR4-1S/cnu41.9-3-1ES26.sbn alias cnu41.9-3-1ES26.sbn
+tftp-server flash:voip/cmterm-7941_7961-sip.9-3-1SR4-1S/cvm41sip.9-3-1ES26.sbn alias cvm41sip.9-3-1ES26.sbn
+tftp-server flash:voip/cmterm-7941_7961-sip.9-3-1SR4-1S/dsp41.9-3-1ES26.sbn alias dsp41.9-3-1ES26.sbn
+tftp-server flash:voip/cmterm-7941_7961-sip.9-3-1SR4-1S/jar41sip.9-3-1ES26.sbn alias jar41sip.9-3-1ES26.sbn
+tftp-server flash:voip/cmterm-7941_7961-sip.9-3-1SR4-1S/SIP41.9-3-1SR4-1S.loads alias SIP41.9-3-1SR4-1S.loads
+tftp-server flash:voip/cmterm-7941_7961-sip.9-3-1SR4-1S/term41.default.loads alias term41.default.loads
+tftp-server flash:voip/cmterm-7941_7961-sip.9-3-1SR4-1S/term61.default.loads alias term61.default.loads
+!
+tftp-server flash:voip/cmterm-7942_7962-sip-9-3-1SR4-1S/apps42.9-3-1ES26.sbn alias apps42.9-3-1ES26.sbn
+tftp-server flash:voip/cmterm-7942_7962-sip-9-3-1SR4-1S/cnu42.9-3-1ES26.sbn alias cnu42.9-3-1ES26.sbn
+tftp-server flash:voip/cmterm-7942_7962-sip-9-3-1SR4-1S/cvm42sip.9-3-1ES26.sbn alias cvm42sip.9-3-1ES26.sbn
+tftp-server flash:voip/cmterm-7942_7962-sip-9-3-1SR4-1S/dsp42.9-3-1ES26.sbn alias dsp42.9-3-1ES26.sbn
+tftp-server flash:voip/cmterm-7942_7962-sip-9-3-1SR4-1S/jar42sip.9-3-1ES26.sbn alias jar42sip.9-3-1ES26.sbn
+tftp-server flash:voip/cmterm-7942_7962-sip-9-3-1SR4-1S/SIP42.9-3-1SR4-1S.loads alias SIP42.9-3-1SR4-1S.loads
+tftp-server flash:voip/cmterm-7942_7962-sip-9-3-1SR4-1S/term42.default.loads alias term42.default.loads
+tftp-server flash:voip/cmterm-7942_7962-sip-9-3-1SR4-1S/term62.default.loads alias term62.default.loads
+!
+tftp-server flash:voip/cmterm-7945_7965-sip-9-4-2SR4-3S/apps45.9-4-2SR4-3.sbn alias apps45.9-4-2SR4-3.sbn
+tftp-server flash:voip/cmterm-7945_7965-sip-9-4-2SR4-3S/cnu45.9-4-2SR4-3.sbn alias cnu45.9-4-2SR4-3.sbn
+tftp-server flash:voip/cmterm-7945_7965-sip-9-4-2SR4-3S/cvm45sip.9-4-2SR4-3.sbn alias cvm45sip.9-4-2SR4-3.sbn
+tftp-server flash:voip/cmterm-7945_7965-sip-9-4-2SR4-3S/dsp45.9-4-2SR4-3.sbn alias dsp45.9-4-2SR4-3.sbn
+tftp-server flash:voip/cmterm-7945_7965-sip-9-4-2SR4-3S/jar45sip.9-4-2SR4-3.sbn alias jar45sip.9-4-2SR4-3.sbn
+tftp-server flash:voip/cmterm-7945_7965-sip-9-4-2SR4-3S/SIP45.9-4-2SR4-3S.loads alias SIP45.9-4-2SR4-3S.loads
+tftp-server flash:voip/cmterm-7945_7965-sip-9-4-2SR4-3S/term45.default.loads alias term45.default.loads
+tftp-server flash:voip/cmterm-7945_7965-sip-9-4-2SR4-3S/term65.default.loads alias term65.default.loads
+!
+tftp-server flash:voip/cmterm-7975-sip.9-4-2SR4-S3/apps75.9-4-2SR4-3.sbn alias apps75.9-4-2SR4-3.sbn
+tftp-server flash:voip/cmterm-7975-sip.9-4-2SR4-S3/cnu75.9-4-2SR4-3.sbn alias cnu75.9-4-2SR4-3.sbn
+tftp-server flash:voip/cmterm-7975-sip.9-4-2SR4-S3/cvm75sip.9-4-2SR4-3.sbn alias cvm75sip.9-4-2SR4-3.sbn
+tftp-server flash:voip/cmterm-7975-sip.9-4-2SR4-S3/dsp75.9-4-2SR4-3.sbn alias dsp75.9-4-2SR4-3.sbn
+tftp-server flash:voip/cmterm-7975-sip.9-4-2SR4-S3/jar75sip.9-4-2SR4-3.sbn alias jar75sip.9-4-2SR4-3.sbn
+tftp-server flash:voip/cmterm-7975-sip.9-4-2SR4-S3/SIP75.9-4-2SR4-3S.loads alias SIP75.9-4-2SR4-3S.loads
+tftp-server flash:voip/cmterm-7975-sip.9-4-2SR4-S3/term75.default.loads alias term75.default.loads
+!
+tftp-server flash:voip/Desktops/800x480x24/List.xml               alias Desktops/800x480x24/List.xml
+tftp-server flash:voip/Desktops/800x480x24/359th_nipr.png         alias Desktops/800x480x24/359th_nipr.png
+tftp-server flash:voip/Desktops/800x480x24/359th_nipr_thumb.png   alias Desktops/800x480x24/359th_nipr_thumb.png
+!
+tftp-server flash:/voip/ringtones/RingList.xml            alias RingList.xml
+tftp-server flash:/voip/ringtones/Ringlist-wb.xml         alias Ringlist-wb.xml
+tftp-server flash:/voip/ringtones/thunderhorse.raw        alias thunderhorse.raw
+tftp-server flash:/voip/ringtones/thunderhorse.rwb        alias thunderhorse.rwb
+!
+#######
+# codec
+#######
+voice class codec 1
+codec preference 1 g711ulaw
+codec preference 2 g711alaw
+codec preference 3 g729r8
+!
+############
+# keep alive
+############
+voice class sip-options-keepalive 10
+  description Keep SIP Trunk TCP Alive
+  transport tcp
+  up-interval 30
+  down-interval 10
+  retry 3
+!
+##############
+# service voip
+##############
+voice service voip
+  allow-connections sip to sip
+  no supplementary-service h450.2
+  no supplementary-service h450.3
+  !
+  sip
+    bind all source-interface GigabitEthernet 1.58
+    session transport udp
+    registrar server
+    no call service stop
+    midcall-signaling passthru
+    rel1xx supported "rel100"
+    pass-thru headers unsupp
+    asymmetric payload full
+    asserted-id pai
+    error-passthru
+    referto-passing
+!
+#################
+# register global
+#################
+voice register global
+  mode cme
+  # source-address {{ item.nipr.interface.voice.ip.address | default('# MISSING! #') }}
+    # if using VRFs, must use a group to use that VRF plane for source-address
+    # must also use the group in device pools
+  group 1 vrf NIPR_VOICE
+    source-address {{ item.nipr.interface.voice.ip.address | default('# MISSING! #') }}
+  ntp-server {{ item.nipr.interface.loopback_7.ip.address | default('# MISSING! #') }}
+  tftp-path flash:
+  file text
+  timezone {{ item.nipr.voip.timezone | default('# MISSING! #') }}
+   # see context help for region
+  time-format 24
+  date-format D/M/Y
+  max-dn 100
+  max-pool 100
+  # pick enough range of dn & pool to fit auto register and
+  # space for manual entries
+  # auto will start at lower end of dn/pool
+  !
+  #camera
+  #video
+  # enable if have video phones
+  !
+  # if desired
+  # I found it more of a pain
+  no auto-register
+    #password Cisco1
+    #auto-assign 646601 to 6466089
+    # typical node gets last two digits of assignment (100 numbers)
+    # if auto register, dont need to add register dn or pool manually
+    # you may want to go back and edit the dn for the user title
+  !
+  # link load files
+  # 7941, 7961
+  load 7941 SIP41.9-3-1SR4-1S
+  load 7941GE SIP41.9-3-1SR4-1S
+  load 7961 SIP41.9-3-1SR4-1S
+  !
+  # 7942, 7962
+  load 7942 SIP42.9-3-1SR4-1S
+  load 7962 SIP42.9-3-1SR4-1S
+  !
+  # 7945, 7965
+  load 7945 SIP45.9-4-2SR4-3S
+  load 7965 SIP45.9-4-2SR4-3S
+  !
+  # 7975
+  load 7975 SIP75.9-4-2SR4-3S
+  !
+  # 7811, 7821, 7841, 7861
+  load 7811 sip78xx.14-4-1-0301-6.loads
+  load 7821 sip78xx.14-4-1-0301-6.loads
+  load 7841 sip78xx.14-4-1-0301-6.loads
+  load 7861 sip78xx.14-4-1-0301-6.loads
+  !
+  # 8811, 8841, 8851, 8851NR, 8861
+  load 8811 sip88xx.14-4-1-0301-6.loads
+  load 8841 sip88xx.14-4-1-0301-6.loads
+  load 8851 sip88xx.14-4-1-0301-6.loads
+  load 8851NR sip88xx.14-4-1-0301-6.loads
+  load 8861 sip88xx.14-4-1-0301-6.loads
+  !
+  # 8831
+  load 8831 sip8831.10-3-1SR7-2.loads
+  !
+  # 8832
+  load 8832 sip8832.14-4-1-0301-6.loads
+  !
+  # 8845
+  load 8845 sip8845_65.14-4-1-0001-36.loads
+!
+############
+# soft phone
+############
+voice register dn 1
+  number {{ item.node.number | default('# MISSING! #') }}01
+  label {{ item.node.type | default('# MISSING! #') }}-{{ item.node.number | default('# MISSING! #') }}
+  name {{ item.node.type | default('# MISSING! #') }}-{{ item.node.number | default('# MISSING! #') }}
+!
+voice register pool 1
+  id mac AAAA.AAAA.AAAA
+  number 1 dn 1
+  group 1
+  dtmf-relay rtp-nte
+  voice-class codec 1
+  username {{ item.node.number | default('# MISSING! #') }}01 password Cisco123
+  no vad
+!
+############
+# hard phone
+############
+voice register dn 2
+  number {{ item.node.number | default('# MISSING! #') }}02
+  label {{ item.node.type | default('# MISSING! #') }}-{{ item.node.number | default('# MISSING! #') }}
+  name {{ item.node.type | default('# MISSING! #') }}-{{ item.node.number | default('# MISSING! #') }}
+!
+voice register pool 2
+  id mac 001D.A2F3.D1EC
+    # update to your MAC
+  type 7941GE
+    # update to your model
+  number 1 dn 2
+  group 1
+  dtmf-relay rtp-nte
+  voice-class codec 1
+  username {{ item.node.number | default('# MISSING! #') }}02 password Cisco123
+  description {{ item.nipr.voip.prefix | default('# MISSING! #') }}02
+  no vad
+  speed-dial 1 2452002 label "RHN Bragg"
+  speed-dial 2 2452400 label "GAIT NSC"
+!
+##################
+# create profile #
+##################
+# enter this cmd after making modifications to dn or pool
+voice register global
+  create profile
+!
+#########
+# trunk #
+#########
+!
+voice class server-group 1
+ ipv4 150.196.224.90
+ ipv4 150.196.224.91
+ description RHN Bragg CUCM
+!
+dial-peer voice 1000 voip
+  description RHN Bragg Any 7
+  destination-pattern [1-9]......
+  session protocol sipv2
+  session transport tcp
+  session server-group 1
+  voice-class codec 1 offer-all
+  voice-class sip options-keepalive profile 10
+  dtmf-relay rtp-nte
+  ip qos dscp 49 media
+  ip qos dscp cs5 signaling
+  no vad
+!
+dial-peer voice 1005 voip
+  description RHN Bragg Any 10
+  destination-pattern [1-9].........
+  session protocol sipv2
+  session transport tcp
+  session server-group 1
+  voice-class codec 1 offer-all
+  voice-class sip options-keepalive profile 10
+  dtmf-relay rtp-nte
+  ip qos dscp 49 media
+  ip qos dscp cs5 signaling
+  no vad
+!
+############
+# hunt group
+############
+! make phones ring like a call center
+!
+# list phone numbers
+# set number to ring
+voice hunt-group 1 parallel
+  list {{ item.node.number | default('# MISSING! #') }}01,{{ item.node.number | default('# MISSING! #') }}02
+  pilot {{ item.node.number | default('# MISSING! #') }}00
+  name "{{ item.node.type | default('# MISSING! #') }}-{{ item.node.number | default('# MISSING! #') }}"
+!
+{% endif %}
+{% if item.comm is defined %}
+###########
+# COMM OSPF
+###########
+vrf definition COMM_ROUTER
+  address-family ipv4
+  address-family ipv6
+!
+router ospfv3 100
+  address-family ipv4 vrf COMM_ROUTER
+    timers throttle lsa 50 1000 5000
+    passive-interface default
+    router-id {{ item.comm.interface.loop_8.ip.address }}
+!
+###########
+# COMM Data
+###########
+interface GigabitEthernet 1.959
+  shutdown
+  description COMM Data
+  vrf forwarding COMM_ROUTER
+  encapsulation dot1Q 959
+{% if item.comm.interface.data is defined %}
+  !
+  ip addr {{ item.comm.interface.data.ip.address }} {{ item.comm.interface.data.ip.netmask }}
+  no ip proxy-arp
+  no ip redirects
+  !
+  ipv6 enable
+  ospfv3 100 ipv4 area 0
+  !
+  no shutdown
+{% else %}
+  # ip address
+    # warning: not defined
+{% endif %}
+!
+############
+# COMM Voice
+############
+interface GigabitEthernet 1.958
+  shutdown
+  description COMM Voice
+  vrf forwarding COMM_ROUTER
+  encapsulation dot1Q 958
+{% if item.comm.interface.voice is defined %}
+  !
+  ip addr {{ item.comm.interface.voice.ip.address }} {{ item.comm.interface.voice.ip.netmask }}
+  no ip proxy-arp
+  no ip redirects
+  !
+  ipv6 enable
+  ospfv3 100 ipv4 area 0
+  !
+  no shutdown
+{% else %}
+  # ip address
+    # warning: not defined
+{% endif %}
+!
+###########
+# COMM MGMT
+###########
+interface GigabitEthernet 1.922
+  shutdown
+  description COMM MGMT
+  vrf forwarding COMM_ROUTER
+  encapsulation dot1Q 922
+{% if item.comm.interface.mgmt is defined %}
+  !
+  ip addr {{ item.comm.interface.mgmt.ip.address }} {{ item.comm.interface.mgmt.ip.netmask }}
+  no ip proxy-arp
+  no ip redirects
+  !
+  ipv6 enable
+  ospfv3 100 ipv4 area 0
+  !
+  no shutdown
+{% else %}
+  # ip address
+    # warning: not defined
+{% endif %}
+!
+#############
+# COMM Crypto
+#############
+key chain KC_OSPFV3_COMM_AUTH
+key 1
+key-string 7 0229376B2D305C1E6F6124343A36273F24
+cryptographic-algorithm hmac-sha-512
+!
+ip tcp synwait-time 10
+!
+crypto logging session
+crypto logging ikev2
+!
+crypto ikev2 proposal IKEV2_PROPOSAL_COMM
+encryption aes-cbc-256
+integrity sha384
+group 20
+!
+crypto ikev2 policy IKEV2_POLICY_COMM
+match fvrf XLESS_UNDERLAY
+proposal IKEV2_PROPOSAL_COMM
+!
+crypto ikev2 keyring IKEV2_KEYRING
+peer COMM
+address 10.208.0.0 255.254.0.0
+pre-shared-key local IPSEC_COMM
+pre-shared-key remote IPSEC_COMM
+!
+crypto ikev2 profile IKEV2_PROFILE_COMM
+match fvrf XLESS_UNDERLAY
+match identity remote address 10.208.0.0 255.254.0.0
+authentication local pre-share
+authentication remote pre-share
+keyring local IKEV2_KEYRING
+dpd 20 5 periodic
+!
+crypto ipsec transform-set IPSEC_XFORM_AH_SHA1 ah-sha-hmac
+mode transport require
+!
+crypto ipsec profile IPSEC_PROFILE_AH_SHA1
+set transform-set IPSEC_XFORM_AH_SHA1
+set ikev2-profile IKEV2_PROFILE_COMM
+!
+#################
+# COMM Loopback 8
+#################
+interface Loopback8
+  description commercial
+  vrf forwarding COMM_ROUTER
+  ip address {{ item.comm.interface.loop_8.ip.address }} 255.255.255.255
+  !
+  no ip redirects
+  no ip unreachables
+  no ip proxy-arp
+  ip pim sparse-dense-mode
+  ipv6 enable
+  ospfv3 100 ipv4 area 0
+  ospfv3 network point-to-point
+!
+###################
+# COMM Loopback 100
+###################
+interface Loopback100
+  description xless (commercial underlay)
+  ip address {{ item.xless.interface.loop_100.ip.address }} 255.255.255.255
+  !
+  no ip redirects
+  no ip unreachables
+  no ip proxy-arp
+  !
+  ipv6 enable
+  no ipv6 redirects
+  !
+  ospfv3 21 ipv4 area 0
+  ospfv3 21 ipv4 network point-to-point
+!
+############
+# Tunnel 100
+############
+interface Tunnel100
+  shutdown
+  description commercial
+  vrf forwarding COMM_ROUTER
+  ip address {{ item.comm.interface.tunnel.ip.address }} {{ item.comm.interface.tunnel.ip.netmask }}
+  !
+  no ip redirects
+  no ip unreachables
+  ip mtu 1350
+  ip tcp adjust-mss 1310
+  !
+  ip nhrp authentication COMM_35_
+  ip nhrp network-id 100
+  ip nhrp holdtime 600
+  ip nhrp nhs dynamic nbma 10.208.251.247 multicast
+  ip nhrp shortcut
+  !
+  ipv6 enable
+  ipv6 address {{ item.comm.interface.tunnel.ipv6.address }}/{{ item.comm.interface.tunnel.ipv6.netmask }}
+  ipv6 mtu 1350
+  no ipv6 redirects
+  no ipv6 unreachables
+  ipv6 tcp adjust-mss 1290
+  !
+  ipv6 nhrp authentication COMM_35_
+  ipv6 nhrp network-id 100
+  ipv6 nhrp holdtime 600
+  ipv6 nhrp nhs dynamic nbma 10.208.251.247 multicast
+  ipv6 nhrp shortcut
+  !
+  ospfv3 100 network point-to-multipoint
+  ospfv3 100 hello-interval 10
+  ospfv3 100 authentication key-chain KC_OSPFV3_COMM_AUTH
+  ospfv3 100 ipv4 area 0
+  !
+  tunnel source loopback 100
+  tunnel mode gre multipoint
+  tunnel key 100
+  tunnel protection ipsec profile IPSEC_PROFILE_AH_SHA1
+  !
+  no shutdown
+!
+ip route vrf COMM_ROUTER 0.0.0.0 0.0.0.0 tun100 10.224.255.247 name COMM_GATEWAY
+!
+router ospfv3 100
+  address-family ipv4 vrf COMM_ROUTER
+    no passive-interface tunnel 100
+    passive-interface Loopback 8
+    passive-interface GigabitEthernet1.922
+    passive-interface GigabitEthernet1.958
+    passive-interface GigabitEthernet1.959
+!
+{% endif %}
+end

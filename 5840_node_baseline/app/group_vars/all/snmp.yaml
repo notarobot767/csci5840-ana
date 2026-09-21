@@ -1,0 +1,7 @@
+---
+# sample snmp credentials
+# change me!
+snmp:
+  - username: neteng
+    auth_pw: 4erOLcuEuHikOT9d
+    priv_pw: SxM0f2XIb2F5p5mE

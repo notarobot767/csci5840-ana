@@ -1,0 +1,260 @@
+hostname {{ item.hostname | default('# MISSING! #') }}
+ip domain name {{ domain.nipr | default('# MISSING! #') }}
+system mode insecure
+!
+#############
+# Enable IPv6
+#############
+ipv6 unicast-routing
+ipv6 multicast-routing
+!
+##########################
+# Cisco Express Forwarding
+##########################
+ip cef distributed
+ipv6 cef distributed
+!
+#####
+# vrf
+##### 
+!
+#######
+# users
+#######
+{% for user in users %}
+username {{ user.name }} privilege 15 algorithm-type sha256 secret {{ user.secret }}
+{% endfor %}
+!
+line vty 0 4
+  transport input ssh
+  transport output ssh
+  login local
+  logging synchronous
+!
+##############
+# restrict SSH
+##############
+ip ssh server algorithm hostkey ecdsa-sha2-nistp521 ecdsa-sha2-nistp384
+ip ssh server algorithm kex curve25519-sha256 curve25519-sha256@libssh.org ecdh-sha2-nistp521 ecdh-sha2-nistp384
+ip ssh server algorithm encryption chacha20-poly1305@openssh.com aes256-gcm aes256-gcm@openssh.com aes128-gcm aes128-gcm@openssh.com aes256-ctr aes192-ctr aes128-ctr
+ip ssh server algorithm mac hmac-sha2-512-etm@openssh.com hmac-sha2-256-etm@openssh.com hmac-sha2-512 hmac-sha2-256
+!
+ip ssh version 2
+ip ssh dscp 40
+!
+##################
+# restrict console
+##################
+line console 0
+  transport output ssh
+  login local
+  logging synchronous
+!
+#############
+# disable aux
+#############
+line aux 0
+  no exec
+  transport input none
+!
+######
+# misc
+######
+ip tcp path-mtu-discovery
+no ip domain lookup
+no ip boot server
+no ip bootp server
+no ip dns server
+no ip finger
+no ip forward-protocol nd
+no ip http server
+no ip http secure-server
+no ip rcmd rcp-enable
+no ip rcmd rsh-enable
+no ip source-route
+!
+ip arp gratuitous none
+no ip gratuitous-arps
+!
+service nagle
+service tcp-keepalives-in
+service tcp-keepalives-out
+service password-encryption
+!
+no service config
+no service finger
+no service tcp-small-servers
+no service udp-small-servers
+no service pad
+no service call-home
+no service config
+!
+no boot network
+vtp mode off
+spanning-tree mode rapid-pvst
+!
+############
+# enable cdp
+############
+cdp run
+!
+###############
+# rate-limiting
+###############
+ip icmp rate-limit unreachable 500 log
+ip icmp rate-limit unreachable df 500 log
+ip igmp limit 500
+!
+{% set intf_dict = item.interfaces | default(interfaces | default({})) %}
+{% for intf_name, intf in intf_dict.items() %}
+interface {{ intf_name }}
+{% if intf.description is defined %}
+ description {{ intf.description }}
+{% endif %}
+{% if intf.vrf is defined and intf.vrf.forwarding is defined %}
+ vrf forwarding {{ intf.vrf.forwarding }}
+{% endif %}
+{% if intf.ip is defined and intf.ip.address is defined %}
+ ip address {{ intf.ip.address }} {{ intf.ip.netmask }}
+{% endif %}
+ no ip proxy-arp
+ no ip redirects
+{% if intf.ipv6 is defined %}
+{% if intf.ipv6.enable is defined and intf.ipv6.enable %}
+ ipv6 enable
+{% endif %}
+{% set ll = intf.ipv6.link_local | default(intf.ipv6['link-local'] | default(none)) %}
+{% if ll %}
+ ipv6 address {{ ll }} link-local
+{% endif %}
+{% if intf.ipv6.address is defined %}
+ ipv6 address {{ intf.ipv6.address }}/{{ intf.ipv6.netmask | default('64') }}
+{% endif %}
+ no ipv6 redirects
+{% endif %}
+{% if intf.ospfv3 is defined and intf.ospfv3.process is defined %}
+{% for pid, pcfg in intf.ospfv3.process.items() %}
+{% if pcfg.ipv6 is defined %}
+{% set net_type = pcfg.ipv6.network | default(pcfg.ipv6.netmork | default(none)) %}
+{% if net_type %}
+ ospfv3 network {{ net_type }}
+{% endif %}
+{% if pcfg.ipv6['hello-interval'] is defined %}
+ ospfv3 hello-interval {{ pcfg.ipv6['hello-interval'] }}
+{% endif %}
+ ospfv3 {{ pid }} ipv6 area {{ pcfg.ipv6.area }}
+{% endif %}
+{% endfor %}
+{% endif %}
+ no shutdown
+!
+{% endfor %}
+########
+# OSPFv3
+########
+{% set ospf_dict = item.ospfv3 | default(ospfv3 | default({})) %}
+{% for pid, pdata in ospf_dict.items() %}
+router ospfv3 {{ pid }}
+{% if pdata['address-family'] is defined %}
+{% for af in pdata['address-family'] %}
+ address-family {{ af.family }} unicast
+{% if af.rid is defined %}
+  router-id {{ af.rid }}
+{% endif %}
+{% if af['passive-interface'] is defined %}
+  passive-interface {{ af['passive-interface'] }}
+{% endif %}
+{% if af['no-passive-interface'] is defined %}
+{% for np_intf in af['no-passive-interface'] %}
+  no passive-interface {{ np_intf }}
+{% endfor %}
+{% endif %}
+{% if af['default-information'] is defined %}
+  default-information {{ af['default-information'] }}
+{% endif %}
+ exit-address-family
+!
+{% endfor %}
+{% endif %}
+{% endfor %}
+#####
+# BGP
+#####
+{% set bgp_dict = item.bgp | default(bgp | default({})) %}
+{% for asn, bcfg in bgp_dict.items() %}
+router bgp {{ asn }}
+{% if bcfg.rid is defined %}
+ bgp router-id {{ bcfg.rid }}
+{% endif %}
+ bgp log-neighbor-changes
+ no bgp default ipv4-unicast
+{% if bcfg.neighbor is defined %}
+{% for nbr in bcfg.neighbor %}
+{% if nbr.neighbor is defined and nbr['remote-as'] is defined %}
+ neighbor {{ nbr.neighbor }} remote-as {{ nbr['remote-as'] }}
+{% endif %}
+{% endfor %}
+{% endif %}
+!
+{% if bcfg['address-family'] is defined %}
+{% for af in bcfg['address-family'] %}
+ address-family {{ af.family }}
+{% if af.network is defined %}
+  network {{ af.network }}
+{% endif %}
+{% if af.neighbor is defined %}
+{% for nbr_cmd in af.neighbor %}
+  neighbor {{ nbr_cmd }}
+{% endfor %}
+{% endif %}
+ exit-address-family
+!
+{% endfor %}
+{% endif %}
+{% endfor %}
+!
+#####
+# ntp
+#####
+ntp logging
+ntp source Loopback0
+ntp server 2600:bad:c0de:cafe::10
+!
+#########
+# Netflow
+#########
+flow record BASELINE
+  match ipv4 source address
+  match ipv4 destination address
+  match ipv4 protocol
+  match transport source-port
+  match transport destination-port
+  collect counter bytes long
+  collect counter packets long
+  collect flow direction
+  collect interface input
+  collect interface output
+  collect ipv4 dscp
+  collect ipv4 header-length
+  collect ipv4 tos
+  collect ipv4 ttl
+  collect transport tcp flags
+  collect ipv4 fragmentation flags
+  collect transport icmp ipv4 type
+  collect transport icmp ipv4 code
+  collect transport igmp type
+!
+flow exporter BASELINE
+  description badcode
+  destination 2600:bad:c0de:cafe::10
+  source loopback0
+  transport udp 2055
+  export-protocol ipfix
+!
+######
+# SNMP
+######
+snmp-server community password RO
+snmp-server trap-source Loopback0
+snmp ifmib ifindex persist
+!

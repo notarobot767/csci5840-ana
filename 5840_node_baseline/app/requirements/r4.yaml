@@ -1,0 +1,65 @@
+---
+hostname: r4
+template: c8000v.j2
+role: router
+interfaces:
+  Loopback0:
+    ipv6:
+      address: 2600:BAD:C0DE::4
+      netmask: 128
+      enable: true
+    ospfv3:
+      process:
+        21:
+          ipv6:
+            area: 0
+            network: point-to-point
+  GigabitEthernet2:
+    description: "to r5"
+    ipv6:
+     enable: true
+     link_local: FE80::4
+  GigabitEthernet3:
+    description: "to r3"
+    ipv6:
+     enable: true
+    ospfv3:
+      process:
+        21:
+          ipv6:
+            area: 0
+            network: point-to-point
+            hello-interval: 1
+  GigabitEthernet4:
+    description: "to s4"
+    ipv6:
+     enable: true
+    ospfv3:
+      process:
+        21:
+          ipv6:
+            area: 0
+            network: point-to-point
+            hello-interval: 1
+ospfv3:
+  21:
+    address-family:
+      - family: ipv6
+        rid: 4.4.4.0
+        passive-interface: default
+        no-passive-interface:
+          - GigabitEthernet3
+          - GigabitEthernet4
+        default-information: "originate metric 20 metric-type 1"
+bgp:
+  26:
+    rid: 4.4.4.0
+    neighbor:
+      - neighbor: FE80::5%GigabitEthernet2
+      - remote-as: 500
+    address-family:
+      - family: ipv6
+        network: 2600:BAD:C0DE::/48
+        neighbor:
+          - FE80::5%GigabitEthernet2 activate
+          - FE80::5%GigabitEthernet2 route-map RM-BGP-TO-R5-OUT out

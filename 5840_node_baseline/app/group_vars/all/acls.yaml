@@ -1,0 +1,16 @@
+---
+acls:
+  nipr:
+    standard:
+    - name: SNMP_PROTECT
+      rules:
+        - seq: 10
+          action: permit
+          network: 143.86.179.192
+          wildcard: 0.0.0.31
+        - seq: 999
+          action: permit
+          network: any
+          wildcard: any
+          log: true
+        
