@@ -2,14 +2,9 @@ r3:
   host: 2600:bad:c0de::3
   device_type: cisco_ios
   username: cisco
-  password: cisco
+  password: password
 r4:
   host: 2600:bad:c0de::4
   device_type: cisco_ios
   username: cisco
-  password: cisco
-r5:
-  host: 2600:bad:c0de::5
-  device_type: cisco_xr
-  username: asdf
-  password: asdf
+  password: password

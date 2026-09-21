@@ -65,6 +65,7 @@ def device_view_device_yaml(device):
             devices=devices,
             title="view",
             h1=f"View Device: {device}",
+            config_type="yaml",
             comp1="components/dev_mgmt/app_buttons.html",
             comp2="components/dev_mgmt/device_buttons_view.html",
             comp3="components/dev_mgmt/device_buttons_view_function.html",
@@ -78,7 +79,66 @@ def device_view_device_yaml(device):
         h1=f"View Device: {device}",
     )
 
-@app.route("/device/add", methods=["GET", "POST"])
+@app.route("/device/view/<device>/startup")
+def device_view_device_startup(device):
+    devices = device_mgmt.get_device_list()
+    if device not in devices:
+        flash(f"Device '{device}' does not exist.", "warning")
+        return redirect(url_for("device_view"))
+
+    success, result = device_mgmt.get_device_startup_config(device)
+
+    if not success:
+        flash(result, "danger")
+        config_content = f"! Error retrieving configuration via SSH:\n! {result}"
+    else:
+        config_content = result
+
+    return render_template(
+        "template.html",
+        device=device,
+        devices=devices,
+        title="view",
+        h1=f"View Device: {device}",
+        config_type="startup",
+        comp1="components/dev_mgmt/app_buttons.html",
+        comp2="components/dev_mgmt/device_buttons_view.html",
+        comp3="components/dev_mgmt/device_buttons_view_function.html",
+        comp4="components/dev_mgmt/device_buttons_view_function_startup.html",
+        config_content=config_content,
+        device_data=device_mgmt.get_devices().get(device, {})
+    )
+
+@app.route("/device/view/<device>/running")
+def device_view_device_running(device):
+    devices = device_mgmt.get_device_list()
+    if device not in devices:
+        flash(f"Device '{device}' does not exist.", "warning")
+        return redirect(url_for("device_view"))
+
+    success, result = device_mgmt.get_device_running_config(device)
+
+    if not success:
+        flash(result, "danger")
+        config_content = f"! Error retrieving configuration via SSH:\n! {result}"
+    else:
+        config_content = result
+
+    return render_template(
+        "template.html",
+        device=device,
+        devices=devices,
+        title="view",
+        h1=f"View Device: {device}",
+        config_type="running",
+        comp1="components/dev_mgmt/app_buttons.html",
+        comp2="components/dev_mgmt/device_buttons_view.html",
+        comp3="components/dev_mgmt/device_buttons_view_function.html",
+        comp4="components/dev_mgmt/device_buttons_view_function_running.html",
+        config_content=config_content,
+        device_data=device_mgmt.get_devices().get(device, {})
+    )
+
 @app.route("/device/add", methods=["GET", "POST"])
 def device_add():
     vendors = [

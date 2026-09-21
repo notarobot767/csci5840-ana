@@ -1,0 +1,52 @@
+<div class="card border-0 shadow-sm rounded-3 overflow-hidden mb-4">
+    <!-- Header bar styled like an IDE tab / status bar -->
+    <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center py-2 px-3">
+        <div class="d-flex align-items-center gap-2">
+            <span class="badge bg-info text-dark font-monospace">SSH</span>
+            <span class="text-light fw-medium font-monospace small">{{ device }} running-config</span>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            <button class="btn btn-sm btn-outline-light d-flex align-items-center gap-1" id="copyRunningBtn" onclick="copyRunningConfig()">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16">
+                    <path d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1v-1z"/>
+                    <path d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5h3zm-3-1A1.5 1.5 0 0 0 5 1.5v1A1.5 1.5 0 0 0 6.5 4h3A1.5 1.5 0 0 0 11 2.5v-1A1.5 1.5 0 0 0 9.5 0h-3z"/>
+                </svg>
+                <span id="copyRunningBtnText">Copy</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Code Display Area with Line Numbers -->
+    <div class="card-body p-0 bg-dark position-relative" style="background-color: #1e1e2e !important;">
+        {% if config_content %}
+        <div class="d-flex font-monospace text-start" style="font-size: 0.875rem; line-height: 1.55;">
+            <!-- Line numbers gutter -->
+            <div class="text-secondary user-select-none text-end py-3 ps-3 pe-2 border-end border-secondary border-opacity-25" style="min-width: 3.5rem; opacity: 0.4;">
+                {% for line in config_content.splitlines() %}
+                    <div>{{ loop.index }}</div>
+                {% endfor %}
+            </div>
+
+            <!-- Configuration Text Content -->
+            <pre class="m-0 p-3 flex-grow-1 overflow-auto" style="tab-size: 2; max-height: 600px;"><code id="runningConfigCode" class="text-light">{{ config_content }}</code></pre>
+        </div>
+        {% else %}
+        <div class="p-4 text-secondary text-center font-monospace">
+            No running configuration retrieved for device: <strong>{{ device }}</strong>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+function copyRunningConfig() {
+    const text = document.getElementById('runningConfigCode').innerText;
+    navigator.clipboard.writeText(text).then(() => {
+        const btnText = document.getElementById('copyRunningBtnText');
+        btnText.innerText = 'Copied!';
+        setTimeout(() => {
+            btnText.innerText = 'Copy';
+        }, 2000);
+    });
+}
+</script>

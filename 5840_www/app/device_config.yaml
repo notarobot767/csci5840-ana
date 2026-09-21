@@ -5,6 +5,3 @@ r4:
   test:
     test1: 1
     test2: 2
-r5:
-  template: ce
-  asdf: true

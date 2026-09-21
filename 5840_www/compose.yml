@@ -6,6 +6,8 @@ services:
       "--bind", "0.0.0.0:8080",
       "wsgi:app"
     ]
+    networks:
+      - www
     environment:
       TZ: America/Denver
     build:
@@ -17,6 +19,8 @@ services:
       - ./app:/app
     restart: unless-stopped
   webtest:
+    networks:
+      - www
     environment:
       TZ: America/Denver
     build:
@@ -27,3 +31,6 @@ services:
     volumes:
       - ./app:/app
     restart: unless-stopped
+networks:
+  www:
+    enable_ipv6: true

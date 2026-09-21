@@ -1,9 +1,15 @@
 #!/usr/bin/env python3
 
 from pathlib import Path
-import yaml
 from flask import request, has_request_context
 from html import escape
+import yaml
+import io
+import paramiko
+import tempfile
+import time
+import re
+
 
 def get_devices():
     config_path = Path("device_config.yaml")
@@ -242,7 +248,118 @@ def get_device_raw_combined_yaml(device):
     cfg, cred = get_raw_device_data(device)
     merged = {**cfg, **cred}
     return yaml.dump(merged, default_flow_style=False, sort_keys=False)
-    
+
+def _execute_show_config(device, command):
+    """Executes a show config command over an interactive SSH shell,
+
+    waiting past 'Building configuration...' until the prompt returns.
+    """
+    _, creds = get_raw_device_data(device)
+    if not creds:
+        return False, f"Credentials for device '{device}' not found."
+
+    host = str(creds.get("host", "")).strip().strip("[]")
+    username = creds.get("username") or creds.get("user")
+    password = creds.get("password") or creds.get("pass")
+
+    if not host or not username:
+        return False, f"Missing host IP or username for device '{device}'."
+
+    ssh = paramiko.SSHClient()
+    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+
+    try:
+        ssh.connect(
+            hostname=host,
+            username=username,
+            password=password,
+            look_for_keys=False,
+            allow_agent=False,
+            timeout=10,
+        )
+
+        channel = ssh.invoke_shell(width=300, height=5000)
+        time.sleep(1)
+
+        # Flush initial login banners and prompt
+        if channel.recv_ready():
+            channel.recv(65535)
+
+        # Disable paging and send command
+        channel.send("terminal length 0\n")
+        time.sleep(0.3)
+        if channel.recv_ready():
+            channel.recv(65535)
+
+        channel.send(f"{command}\n")
+
+        output = ""
+        max_wait = 25  # Large running configs can take several seconds to generate
+        start_time = time.time()
+
+        # Regex matching typical network device CLI prompt endings: e.g. "r3#", "switch(config)#", "router>"
+        prompt_pattern = re.compile(r"[\r\n][\w\.\-]+(?:\([^\)]+\))?[#>] *$")
+
+        while time.time() - start_time < max_wait:
+            if channel.recv_ready():
+                chunk = channel.recv(65535).decode("utf-8", errors="replace")
+                output += chunk
+
+                # Check if we have received the config and hit the final device prompt
+                # (or the standard Cisco/Arista 'end' marker at the end of configs)
+                tail = output[-200:] if len(output) > 200 else output
+                if ("\nend\r\n" in output or "\nend\n" in output) and prompt_pattern.search(tail):
+                    break
+                elif prompt_pattern.search(tail) and "Building configuration" in output:
+                    # Some devices don't have 'end' explicitly, but returned to prompt after building
+                    break
+
+            time.sleep(0.3)
+
+        if not output:
+            return False, "Received empty response from device."
+
+        # Parse out echoes, banners, and trailing prompts
+        cleaned_lines = []
+        capture = False
+
+        for line in output.splitlines():
+            line_str = line.strip("\r")
+
+            # Ignore the command echo
+            if command in line_str:
+                capture = True
+                continue
+
+            # Skip the 'Building configuration...' informational line
+            if "Building configuration..." in line_str:
+                capture = True
+                continue
+
+            if capture:
+                # Discard the trailing CLI prompt
+                if prompt_pattern.search("\n" + line_str):
+                    continue
+                cleaned_lines.append(line_str)
+
+        final_output = "\n".join(cleaned_lines).strip()
+        return True, final_output or output
+
+    except Exception as e:
+        return False, f"SSH connection failed to {host}: {str(e)}"
+    finally:
+        ssh.close()
+
+
+def get_device_startup_config(device):
+    """Fetches 'show startup-config' from the device."""
+    return _execute_show_config(device, "show startup-config")
+
+
+def get_device_running_config(device):
+    """Fetches 'show running-config' from the device."""
+    return _execute_show_config(device, "show running-config")
+        
 def main():
     print(get_device_buttons(current_path="/device/view/r3"))
 
