@@ -1,0 +1,60 @@
+---
+hostname: s4
+template: ceos.j2
+role: router
+vlans: true
+interfaces:
+  Loopback0:
+    ipv6:
+      enable: true
+      address:
+        - address: 2600:BAD:C0DE:14
+          netmask: 128
+    ospfv3:
+      process:
+        21:
+          ipv6:
+            area: 0
+            network: point-to-point
+  Ethernet1:
+    description: "to r4"
+    switchport: false
+    ipv6:
+      enable: true
+    ospfv3:
+      process:
+        21:
+          passive-interface: false
+          ipv6:
+            area: 0
+            network: point-to-point
+  Ethernet2:
+    description: "to s3"
+    switchport: false
+    ipv6:
+      enable: true
+    ospfv3:
+      process:
+        21:
+          passive-interface: false
+          ipv6:
+            area: 0
+            network: point-to-point
+  Ethernet3:
+    description: "to r2"
+    switchport: false
+    ipv6:
+      enable: true
+    ospfv3:
+      process:
+        21:
+          passive-interface: false
+          ipv6:
+            area: 0
+            network: point-to-point
+ospfv3:
+  21:
+    address-family:
+      - family: ipv6
+        rid: 4.4.4.1
+        passive-interface: default

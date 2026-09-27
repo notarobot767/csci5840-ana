@@ -1,0 +1,82 @@
+---
+hostname: s1
+template: ceos.j2
+role: router
+vlans: true
+interfaces:
+  Loopback0:
+    ipv6:
+      enable: true
+      address:
+        - address: 2600:BAD:C0DE:11
+          netmask: 128
+    isis:
+      enable: core
+      metric: 10
+  Ethernet1:
+    description: "to r1"
+    switchport: false
+    ipv6:
+     enable: true
+    isis:
+      enable: core
+      metric: 10
+      network: point-to-point
+  Ethernet2:
+    description: "to s2"
+    switchport: false
+    ipv6:
+     enable: true
+    isis:
+      enable: core
+      metric: 10
+      network: point-to-point
+  Ethernet3:
+    description: "to H1"
+    switchport: true
+    switch:
+      address: 10
+    spanning-tree:
+      portfast: edge
+      bpduguard: true
+  Ethernet4:
+    description: "to H2"
+    switchport: true
+    switch:
+      address: 20
+    spanning-tree:
+      portfast: edge
+      bpduguard: true
+  Vlan10:
+    ipv6:
+      enable: true
+      address:
+        - address: 2600:bad:c0de:110::1
+          mask: 64
+        - address: fe80::1
+          link_local: true
+    isis:
+      enable: core
+      metric: 10
+      network: point-to-point
+      passive: true
+  Vlan20:
+    ipv6:
+      enable: true
+      address:
+        - address: 2600:bad:c0de:120::1
+          mask: 64
+        - address: fe80::1
+          link_local: true
+    isis:
+      enable: core
+      metric: 10
+      network: point-to-point
+      passive: true
+isis:
+  core:
+    net: "49.0001.0000.0000.0011.00"
+    is-type: level-2
+    address-family:
+      - family: ipv6
+        multi-topology: true

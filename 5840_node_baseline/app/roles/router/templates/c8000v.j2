@@ -1,5 +1,5 @@
-hostname {{ item.hostname | default('# MISSING! #') }}
-ip domain name {{ domain.nipr | default('# MISSING! #') }}
+hostname {{ item.hostname | default(hostname | default('# MISSING! #')) }}
+ip domain name {{ (domain.nipr if domain is defined and domain.nipr is defined else none) | default('# MISSING! #') }}
 system mode insecure
 !
 #############
@@ -21,9 +21,11 @@ ipv6 cef distributed
 #######
 # users
 #######
+{% if users is defined %}
 {% for user in users %}
 username {{ user.name }} privilege 15 algorithm-type sha256 secret {{ user.secret }}
 {% endfor %}
+{% endif %}
 !
 line vty 0 4
   transport input ssh
@@ -105,6 +107,23 @@ ip icmp rate-limit unreachable 500 log
 ip icmp rate-limit unreachable df 500 log
 ip igmp limit 500
 !
+{% set vlan_enabled = item.vlans | default(vlans | default(false)) %}
+{% set v_list = vlans.nipr if (vlans is defined and vlans is mapping and vlans.nipr is defined) else (global_vlans.nipr if (global_vlans is defined and global_vlans.nipr is defined) else none) %}
+{% if vlan_enabled and v_list %}
+#######
+# VLANs
+#######
+{% for v in v_list %}
+vlan {{ v.vlan }}
+{% if v.name is defined %}
+ name {{ v.name }}
+{% endif %}
+!
+{% endfor %}
+{% endif %}
+############
+# Interfaces
+############
 {% set intf_dict = item.interfaces | default(interfaces | default({})) %}
 {% for intf_name, intf in intf_dict.items() %}
 interface {{ intf_name }}
@@ -123,12 +142,36 @@ interface {{ intf_name }}
 {% if intf.ipv6.enable is defined and intf.ipv6.enable %}
  ipv6 enable
 {% endif %}
-{% set ll = intf.ipv6.link_local | default(intf.ipv6['link-local'] | default(none)) %}
-{% if ll %}
- ipv6 address {{ ll }} link-local
+{% set ll_top = intf.ipv6.link_local | default(intf.ipv6['link-local'] | default(none)) %}
+{% if ll_top %}
+ ipv6 address {{ ll_top }} link-local
 {% endif %}
 {% if intf.ipv6.address is defined %}
- ipv6 address {{ intf.ipv6.address }}/{{ intf.ipv6.netmask | default('64') }}
+  {% if intf.ipv6.address is string %}
+ ipv6 address {{ intf.ipv6.address }}/{{ intf.ipv6.netmask | default(intf.ipv6.mask | default('64')) }}
+  {% elif intf.ipv6.address is iterable and intf.ipv6.address is not mapping %}
+    {% set ns = namespace(has_split_ll=false, split_ll_addr=none) %}
+    {% for entry in intf.ipv6.address %}
+      {% if entry.link_local is defined and entry.link_local and entry.address is not defined %}
+        {% set ns.has_split_ll = true %}
+      {% endif %}
+      {% if entry.address is defined and entry.mask is not defined and entry.netmask is not defined and entry.link_local is not defined %}
+        {% set ns.split_ll_addr = entry.address %}
+      {% endif %}
+    {% endfor %}
+    {% if ns.has_split_ll and ns.split_ll_addr %}
+ ipv6 address {{ ns.split_ll_addr }} link-local
+    {% endif %}
+    {% for addr in intf.ipv6.address %}
+      {% if addr.link_local is defined and addr.link_local and addr.address is defined %}
+ ipv6 address {{ addr.address }} link-local
+      {% elif addr.address is defined and (addr.netmask is defined or addr.mask is defined) %}
+ ipv6 address {{ addr.address }}/{{ addr.netmask | default(addr.mask) }}
+      {% elif addr.address is defined and not ns.has_split_ll %}
+ ipv6 address {{ addr.address }}/64
+      {% endif %}
+    {% endfor %}
+  {% endif %}
 {% endif %}
  no ipv6 redirects
 {% endif %}
@@ -189,11 +232,18 @@ router bgp {{ asn }}
  bgp log-neighbor-changes
  no bgp default ipv4-unicast
 {% if bcfg.neighbor is defined %}
+{% set ns_bgp = namespace(nbr_name=none, nbr_as=none) %}
 {% for nbr in bcfg.neighbor %}
-{% if nbr.neighbor is defined and nbr['remote-as'] is defined %}
+  {% if nbr.neighbor is defined and nbr['remote-as'] is defined %}
  neighbor {{ nbr.neighbor }} remote-as {{ nbr['remote-as'] }}
-{% endif %}
+  {% else %}
+    {% if nbr.neighbor is defined %}{% set ns_bgp.nbr_name = nbr.neighbor %}{% endif %}
+    {% if nbr['remote-as'] is defined %}{% set ns_bgp.nbr_as = nbr['remote-as'] %}{% endif %}
+  {% endif %}
 {% endfor %}
+{% if ns_bgp.nbr_name and ns_bgp.nbr_as %}
+ neighbor {{ ns_bgp.nbr_name }} remote-as {{ ns_bgp.nbr_as }}
+{% endif %}
 {% endif %}
 !
 {% if bcfg['address-family'] is defined %}
@@ -258,3 +308,4 @@ snmp-server community password RO
 snmp-server trap-source Loopback0
 snmp ifmib ifindex persist
 !
+end

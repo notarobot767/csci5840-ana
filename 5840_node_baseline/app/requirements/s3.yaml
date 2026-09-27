@@ -1,0 +1,83 @@
+---
+hostname: s3
+template: ceos.j2
+role: router
+vlans: true
+interfaces:
+  Loopback0:
+    ipv6:
+      enable: true
+      address:
+        - address: 2600:BAD:C0DE:13
+          netmask: 128
+    ospfv3:
+      process:
+        21:
+          ipv6:
+            area: 0
+            network: point-to-point
+  Ethernet1:
+    description: "to r3"
+    switchport: false
+    ipv6:
+      enable: true
+    ospfv3:
+      process:
+        21:
+          passive-interface: false
+          ipv6:
+            area: 0
+            network: point-to-point
+  Ethernet2:
+    description: "to s4"
+    switchport: false
+    ipv6:
+      enable: true
+    ospfv3:
+      process:
+        21:
+          passive-interface: false
+          ipv6:
+            area: 0
+            network: point-to-point
+  Ethernet3:
+    description: "to r1"
+    switchport: false
+    ipv6:
+      enable: true
+    ospfv3:
+      process:
+        21:
+          passive-interface: false
+          ipv6:
+            area: 0
+            network: point-to-point
+  Ethernet4:
+    description: "to NMAS"
+    switchport: true
+    switch:
+      address: 222
+    spanning-tree:
+      portfast: edge
+      bpduguard: true
+  Vlan222:
+    ipv6:
+      enable: true
+      address:
+        - address: 2600:bad:c0de:cafe::1
+          mask: 64
+        - address: fe80::1
+          link_local: true
+    ospfv3:
+      process:
+        21:
+          passive-interface: false
+          ipv6:
+            area: 0
+            network: point-to-point
+ospfv3:
+  21:
+    address-family:
+      - family: ipv6
+        rid: 3.3.3.1
+        passive-interface: default

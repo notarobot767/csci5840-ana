@@ -6,6 +6,7 @@ system l1
 #############
 # Enable IPv6
 #############
+no ip routing
 ipv6 unicast-routing
 !
 service routing protocols model multi-agent
@@ -46,6 +47,20 @@ management api http-commands
 !
 ip route 0.0.0.0/0 172.20.20.1
 !
+{% set vlan_enabled = item.vlans | default(vlans | default(false)) %}
+{% set v_list = vlans.nipr if (vlans is defined and vlans is mapping and vlans.nipr is defined) else (global_vlans.nipr if (global_vlans is defined and global_vlans.nipr is defined) else none) %}
+{% if vlan_enabled and v_list %}
+#######
+# VLANs
+#######
+{% for v in v_list %}
+vlan {{ v.vlan }}
+{% if v.name is defined %}
+   name {{ v.name }}
+{% endif %}
+!
+{% endfor %}
+{% endif %}
 ############
 # Interfaces
 ############
@@ -55,54 +70,98 @@ interface {{ intf_name }}
 {% if intf.description is defined %}
   description {{ intf.description }}
 {% endif %}
-{% if intf.switchport is defined and not intf.switchport %}
+{% if intf.switchport is defined %}
+  {% if not intf.switchport %}
   no switchport
+  {% else %}
+  switchport
+  {% if intf.switch is defined and intf.switch.address is defined %}
+  switchport access vlan {{ intf.switch.address }}
+  {% endif %}
+  {% endif %}
+{% endif %}
+{% if intf['spanning-tree'] is defined %}
+  {% if intf['spanning-tree'].portfast is defined %}
+  spanning-tree portfast {{ intf['spanning-tree'].portfast }}
+  {% endif %}
+  {% if intf['spanning-tree'].bpduguard is defined and intf['spanning-tree'].bpduguard %}
+  spanning-tree bpduguard enable
+  {% endif %}
 {% endif %}
 {% if intf.ip is defined and intf.ip.address is defined %}
   ip address {{ intf.ip.address }}/{{ intf.ip.netmask | default('24') }}
 {% endif %}
 {% if intf.ipv6 is defined %}
-{% if intf.ipv6.enable is defined and intf.ipv6.enable %}
+  {% if intf.ipv6.enable is defined and intf.ipv6.enable %}
   ipv6 enable
-{% endif %}
-{% set ll = intf.ipv6.link_local | default(intf.ipv6['link-local'] | default(none)) %}
-{% if ll %}
-  ipv6 address {{ ll }} link-local
-{% endif %}
-{% if intf.ipv6.address is defined %}
-  ipv6 address {{ intf.ipv6.address }}/{{ intf.ipv6.netmask | default('64') }}
-{% endif %}
+  {% endif %}
+  {% set ll_top = intf.ipv6.link_local | default(intf.ipv6['link-local'] | default(none)) %}
+  {% if ll_top %}
+  ipv6 address {{ ll_top }} link-local
+  {% endif %}
+  {% if intf.ipv6.address is defined %}
+    {% if intf.ipv6.address is string %}
+  ipv6 address {{ intf.ipv6.address }}/{{ intf.ipv6.netmask | default(intf.ipv6.mask | default('64')) }}
+    {% elif intf.ipv6.address is iterable and intf.ipv6.address is not mapping %}
+      {% set ns = namespace(has_split_ll=false, split_ll_addr=none) %}
+      {% for entry in intf.ipv6.address %}
+        {% if entry.link_local is defined and entry.link_local and entry.address is not defined %}
+          {% set ns.has_split_ll = true %}
+        {% endif %}
+        {% if entry.address is defined and entry.mask is not defined and entry.netmask is not defined and entry.link_local is not defined %}
+          {% set ns.split_ll_addr = entry.address %}
+        {% endif %}
+      {% endfor %}
+      {% if ns.has_split_ll and ns.split_ll_addr %}
+  ipv6 address {{ ns.split_ll_addr }} link-local
+      {% endif %}
+      {% for addr in intf.ipv6.address %}
+        {% if addr.link_local is defined and addr.link_local and addr.address is defined %}
+  ipv6 address {{ addr.address }} link-local
+        {% elif addr.address is defined and (addr.netmask is defined or addr.mask is defined) %}
+  ipv6 address {{ addr.address }}/{{ addr.netmask | default(addr.mask) }}
+        {% elif addr.address is defined and not ns.has_split_ll %}
+  ipv6 address {{ addr.address }}/64
+        {% endif %}
+      {% endfor %}
+    {% endif %}
+  {% endif %}
 {% endif %}
 {% if intf.isis is defined %}
-{% if intf.isis.enable is defined %}
+  {% if intf.isis.enable is defined %}
   isis enable {{ intf.isis.enable | upper }}
-{% endif %}
-{% if intf.isis.metric is defined %}
+  {% endif %}
+  {% if intf.isis.metric is defined %}
   isis metric {{ intf.isis.metric }}
-{% endif %}
-{% if intf.isis.network is defined %}
+  {% endif %}
+  {% if intf.isis.network is defined %}
   isis network {{ intf.isis.network }}
-{% endif %}
+  {% endif %}
+  {% if intf.isis.passive is defined and intf.isis.passive %}
+  isis passive
+  {% endif %}
 {% endif %}
 {% if intf.ospfv3 is defined and intf.ospfv3.process is defined %}
-{% for pid, pcfg in intf.ospfv3.process.items() %}
-{% if pcfg.ipv6 is defined %}
+  {% for pid, pcfg in intf.ospfv3.process.items() %}
+    {% if pcfg['passive-interface'] is defined and not pcfg['passive-interface'] %}
   no ospfv3 passive-interface
-{% if pcfg.ipv6['hello-interval'] is defined %}
+    {% endif %}
+    {% if pcfg.ipv6 is defined %}
+      {% if pcfg.ipv6['hello-interval'] is defined %}
   ospfv3 ipv6 hello-interval {{ pcfg.ipv6['hello-interval'] }}
-{% endif %}
-{% if pcfg.ipv6['dead-interval'] is defined %}
+      {% endif %}
+      {% if pcfg.ipv6['dead-interval'] is defined %}
   ospfv3 ipv6 dead-interval {{ pcfg.ipv6['dead-interval'] }}
-{% endif %}
-{% set net_type = pcfg.ipv6.network | default(pcfg.ipv6.netmork | default(none)) %}
-{% if net_type %}
+      {% endif %}
+      {% set net_type = pcfg.ipv6.network | default(pcfg.ipv6.netmork | default(none)) %}
+      {% if net_type %}
   ospfv3 ipv6 network {{ net_type }}
-{% endif %}
-{% if pcfg.ipv6.area is defined %}
+      {% endif %}
+      {% if pcfg.ipv6.area is defined %}
   ospfv3 ipv6 area {{ pcfg.ipv6.area if '.' in (pcfg.ipv6.area | string) else (pcfg.ipv6.area | string) + '.0.0.0' if pcfg.ipv6.area == 0 else pcfg.ipv6.area }}
-{% endif %}
-{% endif %}
-{% endfor %}
+      {% endif %}
+    {% endif %}
+  {% endfor %}
 {% endif %}
 !
 {% endfor %}

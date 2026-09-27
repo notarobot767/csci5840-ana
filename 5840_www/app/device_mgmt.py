@@ -9,7 +9,8 @@ import paramiko
 import tempfile
 import time
 import re
-
+import secrets
+import string
 
 def get_devices():
     config_path = Path("device_config.yaml")
@@ -359,9 +360,183 @@ def get_device_startup_config(device):
 def get_device_running_config(device):
     """Fetches 'show running-config' from the device."""
     return _execute_show_config(device, "show running-config")
-        
+
+def generate_device_password(length: int = 16) -> str:
+    """Generates a secure random password suitable for Cisco IOS/IOS-XE devices.
+
+    Avoids problem characters in Cisco CLI:
+      - '?' (triggers context-sensitive help)
+      - ' ' (whitespace terminates arguments)
+      - '\t' (tab causes command auto-completion)
+    """
+    if length < 8:
+        raise ValueError("Password length should be at least 8 characters.")
+
+    # Safe symbol set for Cisco CLI
+    cisco_safe_symbols = "!@#$%"
+
+    uppercase = string.ascii_uppercase
+    lowercase = string.ascii_lowercase
+    digits = string.digits
+
+    # Combined pool of safe characters
+    char_pool = uppercase + lowercase + digits + cisco_safe_symbols
+
+    # Guarantee at least one character from each character class
+    password = [
+        secrets.choice(uppercase),
+        secrets.choice(lowercase),
+        secrets.choice(digits),
+        secrets.choice(cisco_safe_symbols),
+    ]
+
+    # Fill remaining length with random choices from the pool
+    password += [secrets.choice(char_pool) for _ in range(length - 4)]
+
+    # Cryptographically shuffle the characters to randomize positions
+    system_random = secrets.SystemRandom()
+    system_random.shuffle(password)
+
+    return "".join(password)
+
+def _push_device_password_ssh(host, username, old_password, new_password, device_type="cisco_ios"):
+    """
+    Connects to a Cisco or Arista device via SSH and updates the user's password.
+    Supports 'cisco_ios', 'cisco_xe', 'arista_eos', etc.
+    Returns (True, None) on success or (False, "error message") on failure.
+    """
+    ssh = paramiko.SSHClient()
+    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+
+    try:
+        clean_host = str(host).strip().strip("[]")
+        ssh.connect(
+            hostname=clean_host,
+            username=username,
+            password=old_password,
+            look_for_keys=False,
+            allow_agent=False,
+            timeout=10,
+        )
+
+        channel = ssh.invoke_shell(width=300, height=5000)
+        time.sleep(1)
+
+        # Flush initial login banners and prompt
+        if channel.recv_ready():
+            channel.recv(65535)
+
+        # Vendor-specific password configuration command
+        normalized_type = str(device_type).lower()
+        if "arista" in normalized_type or "eos" in normalized_type:
+            user_cmd = f"username {username} secret {new_password}\n"
+        else:
+            # Default to Cisco IOS-XE SHA-256 secret
+            user_cmd = f"username {username} algorithm-type sha256 secret {new_password}\n"
+
+        commands = [
+            "terminal length 0\n",
+            "configure terminal\n",
+            user_cmd,
+            "end\n",
+            "write memory\n",
+        ]
+
+        output = ""
+        for cmd in commands:
+            channel.send(cmd)
+            time.sleep(0.8)
+            if channel.recv_ready():
+                output += channel.recv(65535).decode("utf-8", errors="replace")
+
+        # Allow extra time for NVRAM write to complete
+        time.sleep(1)
+        if channel.recv_ready():
+            output += channel.recv(65535).decode("utf-8", errors="replace")
+
+        lower_out = output.lower()
+        # Common syntax and privilege error markers across IOS and EOS
+        error_indicators = ["% invalid input", "% error", "% authorization failed", "% permission denied"]
+        if any(err in lower_out for err in error_indicators):
+            return False, f"CLI error encountered: {output.strip()}"
+
+        return True, None
+
+    except Exception as e:
+        return False, f"SSH operation failed: {str(e)}"
+    finally:
+        ssh.close()
+
+
+def update_all_device_passwords(apply_to_devices: bool = True):
+    """
+    Rotates passwords for all devices in device_creds.yaml.
+    Supports both Cisco and Arista network devices.
+    """
+    creds_path = Path("device_creds.yaml")
+    if not creds_path.exists():
+        return False, "device_creds.yaml does not exist."
+
+    creds = yaml.safe_load(creds_path.read_text()) or {}
+    if not creds:
+        return False, "device_creds.yaml is empty."
+
+    report = {}
+
+    for device_name, dev_info in creds.items():
+        if not isinstance(dev_info, dict):
+            report[device_name] = {"status": "skipped", "message": "Invalid device structure"}
+            continue
+
+        host = dev_info.get("host")
+        username = dev_info.get("username") or dev_info.get("user")
+        old_password = dev_info.get("password") or dev_info.get("pass")
+        device_type = dev_info.get("device_type", "cisco_ios")
+
+        if not host or not username or not old_password:
+            report[device_name] = {
+                "status": "failed",
+                "message": "Missing host, username, or password",
+            }
+            continue
+
+        new_password = generate_device_password(16)
+
+        if apply_to_devices:
+            success, err = _push_device_password_ssh(
+                host=host,
+                username=username,
+                old_password=old_password,
+                new_password=new_password,
+                device_type=device_type,
+            )
+            if not success:
+                report[device_name] = {
+                    "status": "failed",
+                    "message": f"Failed to push to device: {err}",
+                }
+                continue
+
+        # Update credential in dictionary
+        if "password" in dev_info:
+            dev_info["password"] = new_password
+        elif "pass" in dev_info:
+            dev_info["pass"] = new_password
+        else:
+            dev_info["password"] = new_password
+
+        report[device_name] = {
+            "status": "success",
+            "message": f"Password rotated on {device_type} and YAML updated",
+        }
+
+    with open(creds_path, "w") as f:
+        yaml.safe_dump(creds, f, default_flow_style=False, sort_keys=False)
+
+    return True, report
+
 def main():
-    print(get_device_buttons(current_path="/device/view/r3"))
+    print(update_all_device_passwords())
 
 if __name__ == "__main__":
     main()

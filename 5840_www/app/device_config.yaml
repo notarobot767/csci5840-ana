@@ -5,3 +5,15 @@ r4:
   test:
     test1: 1
     test2: 2
+r1:
+  template: access
+r2:
+  template: access
+s1:
+  template: access
+s2:
+  template: access
+s3:
+  template: access
+s4:
+  template: access

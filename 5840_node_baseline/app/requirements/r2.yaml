@@ -1,5 +1,5 @@
 ---
-hostname: r1
+hostname: r2
 template: ceos.j2
 role: router
 interfaces:
@@ -7,7 +7,7 @@ interfaces:
     ipv6:
       enable: true
       address:
-        - address: 2600:BAD:C0DE::1
+        - address: 2600:BAD:C0DE::2
           netmask: 128
     ospfv3:
       process:
@@ -16,7 +16,7 @@ interfaces:
             area: 0
             network: point-to-point
   Ethernet1:
-    description: "to s3"
+    description: "to s4"
     switchport: false
     ipv6:
      enable: true
@@ -30,7 +30,7 @@ interfaces:
             hello-interval: 1
             dead-interval: 4
   Ethernet2:
-    description: "to s1"
+    description: "to s2"
     switchport: false
     ipv6:
      enable: true
@@ -59,7 +59,7 @@ route-map:
 
 isis:
   core:
-    net: "49.0001.0000.0000.0001.00"
+    net: "49.0001.0000.0000.0002.00"
     is-type: level-2
     address-family:
       - family: ipv6
@@ -67,11 +67,13 @@ isis:
         - "ospfv3 match internal route-map RM-OSPF3-TO-ISIS"
         - "ospfv3 match external route-map RM-OSPF3-TO-ISIS"
         multi-topology: true
+    
+
 ospfv3:
   21:
     address-family:
       - family: ipv6
-        rid: 1.1.1.0
+        rid: 2.2.2.0
         passive-interface: default
         redistribute:
           - "isis level-2 route-map RM-ISIS-TO-OSPF3"

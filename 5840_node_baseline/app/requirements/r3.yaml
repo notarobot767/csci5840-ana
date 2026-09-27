@@ -5,8 +5,9 @@ role: router
 interfaces:
   Loopback0:
     ipv6:
-      address: 2600:BAD:C0DE::3
-      netmask: 128
+      address:
+        - address: 2600:BAD:C0DE::3
+          netmask: 128
       enable: true
     ospfv3:
       process:
@@ -17,7 +18,10 @@ interfaces:
   GigabitEthernet2:
     description: "to r5"
     ipv6:
-     enable: true
+      address:
+        - address: FE80::3
+        - link_local: true
+      enable: true
   GigabitEthernet3:
     description: "to r4"
     ipv6:
