@@ -5,7 +5,7 @@
 5840_authentik/data/*
 5840_authentik/secrets/*
 5840_code/data/*
-5840_guac/data/*
+5840_guac/data
 5840_guac/secrets/*
 5840_proxy/secrets/*
 5840_www/app/__pycache__
