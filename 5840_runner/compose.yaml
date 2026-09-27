@@ -1,0 +1,12 @@
+services:
+  github-runner:
+    image: myoung34/github-runner:latest
+    container_name: actions-runner
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      # Talk directly to the host Docker daemon
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Mount your host repositories so jobs can access your compose files
+      - /home/student/docker:/home/student/docker

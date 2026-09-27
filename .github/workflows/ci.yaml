@@ -19,7 +19,3 @@ jobs:
           echo "Hello World from GitHub Actions running directly on $(hostname)!"
           whoami
           uptime
-
-      - name: Refresh Host Package Lists
-        run: |
-          sudo apt update
