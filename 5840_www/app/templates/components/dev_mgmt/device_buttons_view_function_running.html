@@ -2,8 +2,21 @@
     <!-- Header bar styled like an IDE tab / status bar -->
     <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center py-2 px-3">
         <div class="d-flex align-items-center gap-2">
-            <span class="badge bg-info text-dark font-monospace">SSH</span>
-            <span class="text-light fw-medium font-monospace small">{{ device }} running-config</span>
+            <!-- Dynamic Function Badge -->
+            <span class="badge bg-info text-dark font-monospace text-uppercase">
+                {% if config_type == 'ospf' %}ospf
+                {% elif config_type == 'bgp' %}bgp
+                {% elif config_type == 'route' %}route
+                {% elif config_type == 'cpu' %}cpu
+                {% elif config_type == 'ping' %}ping
+                {% elif config_type == 'tshoot' %}tshoot
+                {% else %}running-config{% endif %}
+            </span>
+
+            <!-- Device Target -->
+            <span class="text-light fw-medium font-monospace small">
+                {{ device }}
+            </span>
         </div>
         <div class="d-flex align-items-center gap-2">
             <button class="btn btn-sm btn-outline-light d-flex align-items-center gap-1" id="copyRunningBtn" onclick="copyRunningConfig()">
@@ -28,11 +41,11 @@
             </div>
 
             <!-- Configuration Text Content -->
-            <pre class="m-0 p-3 flex-grow-1 overflow-auto" style="tab-size: 2; max-height: 600px;"><code id="runningConfigCode" class="text-light">{{ config_content }}</code></pre>
+            <pre class="m-0 p-3 flex-grow-1 overflow-x-auto" style="tab-size: 2;"><code id="runningConfigCode" class="text-light">{{ config_content }}</code></pre>
         </div>
         {% else %}
         <div class="p-4 text-secondary text-center font-monospace">
-            No running configuration retrieved for device: <strong>{{ device }}</strong>
+            No data retrieved for device: <strong>{{ device }}</strong>
         </div>
         {% endif %}
     </div>

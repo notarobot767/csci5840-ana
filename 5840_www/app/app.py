@@ -286,6 +286,257 @@ def roll(num, sides):
         "total": sum(rolls)
     })
 
+@app.route("/device/view/<device>/ospf")
+def device_view_device_ospf(device):
+    devices = device_mgmt.get_device_list()
+    if device not in devices:
+        flash(f"Device '{device}' does not exist.", "warning")
+        return redirect(url_for("device_view"))
+
+    success, result = device_mgmt.get_device_ospf_neighbors(device)
+    config_content = (
+        result
+        if success
+        else f"! Error retrieving OSPF neighbor table via SSH:\n! {result}"
+    )
+    if not success:
+        flash(result, "danger")
+
+    return render_template(
+        "template.html",
+        device=device,
+        devices=devices,
+        title="view",
+        h1=f"View Device: {device}",
+        config_type="ospf",
+        comp1="components/dev_mgmt/app_buttons.html",
+        comp2="components/dev_mgmt/device_buttons_view.html",
+        comp3="components/dev_mgmt/device_buttons_view_function.html",
+        comp4="components/dev_mgmt/device_buttons_view_function_running.html",
+        config_content=config_content,
+        device_data=device_mgmt.get_devices().get(device, {}),
+    )
+
+
+@app.route("/device/view/<device>/bgp")
+def device_view_device_bgp(device):
+    devices = device_mgmt.get_device_list()
+    if device not in devices:
+        flash(f"Device '{device}' does not exist.", "warning")
+        return redirect(url_for("device_view"))
+
+    success, result = device_mgmt.get_device_bgp_neighbors(device)
+    config_content = (
+        result
+        if success
+        else f"! Error retrieving BGP neighbor table via SSH:\n! {result}"
+    )
+    if not success:
+        flash(result, "danger")
+
+    return render_template(
+        "template.html",
+        device=device,
+        devices=devices,
+        title="view",
+        h1=f"View Device: {device}",
+        config_type="bgp",
+        comp1="components/dev_mgmt/app_buttons.html",
+        comp2="components/dev_mgmt/device_buttons_view.html",
+        comp3="components/dev_mgmt/device_buttons_view_function.html",
+        comp4="components/dev_mgmt/device_buttons_view_function_running.html",
+        config_content=config_content,
+        device_data=device_mgmt.get_devices().get(device, {}),
+    )
+
+
+@app.route("/device/view/<device>/route")
+def device_view_device_route(device):
+    devices = device_mgmt.get_device_list()
+    if device not in devices:
+        flash(f"Device '{device}' does not exist.", "warning")
+        return redirect(url_for("device_view"))
+
+    success, result = device_mgmt.get_device_route_table(device)
+    config_content = (
+        result
+        if success
+        else f"! Error retrieving Route Table via SSH:\n! {result}"
+    )
+    if not success:
+        flash(result, "danger")
+
+    return render_template(
+        "template.html",
+        device=device,
+        devices=devices,
+        title="view",
+        h1=f"View Device: {device}",
+        config_type="route",
+        comp1="components/dev_mgmt/app_buttons.html",
+        comp2="components/dev_mgmt/device_buttons_view.html",
+        comp3="components/dev_mgmt/device_buttons_view_function.html",
+        comp4="components/dev_mgmt/device_buttons_view_function_running.html",
+        config_content=config_content,
+        device_data=device_mgmt.get_devices().get(device, {}),
+    )
+
+
+@app.route("/device/view/<device>/cpu")
+def device_view_device_cpu(device):
+    devices = device_mgmt.get_device_list()
+    if device not in devices:
+        flash(f"Device '{device}' does not exist.", "warning")
+        return redirect(url_for("device_view"))
+
+    success, result = device_mgmt.get_device_cpu(device)
+    config_content = (
+        result
+        if success
+        else f"! Error retrieving CPU utilization via SSH:\n! {result}"
+    )
+    if not success:
+        flash(result, "danger")
+
+    return render_template(
+        "template.html",
+        device=device,
+        devices=devices,
+        title="view",
+        h1=f"View Device: {device}",
+        config_type="cpu",
+        comp1="components/dev_mgmt/app_buttons.html",
+        comp2="components/dev_mgmt/device_buttons_view.html",
+        comp3="components/dev_mgmt/device_buttons_view_function.html",
+        comp4="components/dev_mgmt/device_buttons_view_function_running.html",
+        config_content=config_content,
+        device_data=device_mgmt.get_devices().get(device, {}),
+    )
+
+@app.route("/device/view/<device>/ping")
+def device_view_device_ping(device):
+    devices = device_mgmt.get_device_list()
+    if device not in devices:
+        flash(f"Device '{device}' does not exist.", "warning")
+        return redirect(url_for("device_view"))
+
+    success, result = device_mgmt.ping_device(device)
+    config_content = (
+        result
+        if success
+        else f"! Ping failed to execute:\n! {result}"
+    )
+    if not success:
+        flash(result, "warning")
+
+    return render_template(
+        "template.html",
+        device=device,
+        devices=devices,
+        title="view",
+        h1=f"View Device: {device}",
+        config_type="ping",
+        comp1="components/dev_mgmt/app_buttons.html",
+        comp2="components/dev_mgmt/device_buttons_view.html",
+        comp3="components/dev_mgmt/device_buttons_view_function.html",
+        comp4="components/dev_mgmt/device_buttons_view_function_running.html",
+        config_content=config_content,
+        device_data=device_mgmt.get_devices().get(device, {}),
+    )
+
+@app.route("/device/view/<device>/tshoot")
+def device_view_device_tshoot(device):
+    devices = device_mgmt.get_device_list()
+    if device not in devices:
+        flash(f"Device '{device}' does not exist.", "warning")
+        return redirect(url_for("device_view"))
+
+    return render_template(
+        "template.html",
+        device=device,
+        devices=devices,
+        title="view",
+        h1=f"View Device: {device}",
+        config_type="tshoot",
+        comp1="components/dev_mgmt/app_buttons.html",
+        comp2="components/dev_mgmt/device_buttons_view.html",
+        comp3="components/dev_mgmt/device_buttons_view_function.html",
+        comp4="components/dev_mgmt/device_buttons_view_function_tshoot.html",
+        config_content="TODO",
+        device_data=device_mgmt.get_devices().get(device, {}),
+    )
+
+@app.route("/device/view/<device>/running/diff")
+def device_view_device_running_diff(device):
+    devices = device_mgmt.get_device_list()
+    if device not in devices:
+        flash(f"Device '{device}' does not exist.", "warning")
+        return redirect(url_for("device_view"))
+
+    g_ok, g_cfg = device_mgmt.get_golden_config(device)
+    if not g_ok:
+        flash(g_cfg, "danger")
+        return redirect(url_for("device_view_device_running", device=device))
+
+    dev_ok, live_cfg = device_mgmt.get_device_running_config(device)
+    if not dev_ok:
+        flash(live_cfg, "danger")
+        return redirect(url_for("device_view_device_running", device=device))
+
+    diff_rows = device_mgmt.build_side_by_side_diff(g_cfg, live_cfg)
+
+    return render_template(
+        "template.html",
+        device=device,
+        devices=devices,
+        title="view",
+        h1=f"View Device: {device} (Running Diff)",
+        config_type="running_diff",
+        diff_mode="running",
+        diff_rows=diff_rows,
+        comp1="components/dev_mgmt/app_buttons.html",
+        comp2="components/dev_mgmt/device_buttons_view.html",
+        comp3="components/dev_mgmt/device_buttons_view_function.html",
+        comp4="components/dev_mgmt/device_buttons_view_function_diff.html",
+        device_data=device_mgmt.get_devices().get(device, {})
+    )
+
+
+@app.route("/device/view/<device>/startup/diff")
+def device_view_device_startup_diff(device):
+    devices = device_mgmt.get_device_list()
+    if device not in devices:
+        flash(f"Device '{device}' does not exist.", "warning")
+        return redirect(url_for("device_view"))
+
+    g_ok, g_cfg = device_mgmt.get_golden_config(device)
+    if not g_ok:
+        flash(g_cfg, "danger")
+        return redirect(url_for("device_view_device_startup", device=device))
+
+    dev_ok, live_cfg = device_mgmt.get_device_startup_config(device)
+    if not dev_ok:
+        flash(live_cfg, "danger")
+        return redirect(url_for("device_view_device_startup", device=device))
+
+    diff_rows = device_mgmt.build_side_by_side_diff(g_cfg, live_cfg)
+
+    return render_template(
+        "template.html",
+        device=device,
+        devices=devices,
+        title="view",
+        h1=f"View Device: {device} (Startup Diff)",
+        config_type="startup_diff",
+        diff_mode="startup",
+        diff_rows=diff_rows,
+        comp1="components/dev_mgmt/app_buttons.html",
+        comp2="components/dev_mgmt/device_buttons_view.html",
+        comp3="components/dev_mgmt/device_buttons_view_function.html",
+        comp4="components/dev_mgmt/device_buttons_view_function_diff.html",
+        device_data=device_mgmt.get_devices().get(device, {})
+    )
+    
 def main():
     app.debug = True
     app.run(host="0.0.0.0")

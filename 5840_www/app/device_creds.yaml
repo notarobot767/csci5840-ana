@@ -2,39 +2,39 @@ r3:
   host: 2600:bad:c0de::3
   device_type: cisco_ios
   username: cisco
-  password: WkMBZ7fw3@f!G3lm
+  password: UT%n$Ubll7YCm!Mk
 r4:
   host: 2600:bad:c0de::4
   device_type: cisco_ios
   username: cisco
-  password: OgbT%8@cWKq8z!W9
+  password: $Ee3N%4ZV@KvKXS@
 r1:
   host: 2600:bad:c0de::1
   device_type: arista_eos
   username: cisco
-  password: jm@O3s0411DQi@Qq
+  password: dpPILYQd6MxwG!Zz
 r2:
   host: 2600:bad:c0de::2
   device_type: arista_eos
   username: cisco
-  password: Cvc!NVI9Ey4MBPTD
+  password: uloj4um7WL5!6p1Y
 s1:
   host: 2600:bad:c0de::11
   device_type: arista_eos
   username: cisco
-  password: BGlR8o!60nnFob1B
+  password: S8F4BQa6y2!L3CG%
 s2:
   host: 2600:bad:c0de::12
   device_type: arista_eos
   username: cisco
-  password: 4ajYb7TeV%Hi#wuG
+  password: '%BsEu6jZZ8#zn!Ls'
 s3:
   host: 2600:bad:c0de::13
   device_type: arista_eos
   username: cisco
-  password: A%AX@BfmLYYzJ7b5
+  password: 65!nDzlehuq6DWdu
 s4:
   host: 2600:bad:c0de::14
   device_type: arista_eos
   username: cisco
-  password: 2jA3u$2DMKe47Z66
+  password: 2$35KGT8wWbYeH62

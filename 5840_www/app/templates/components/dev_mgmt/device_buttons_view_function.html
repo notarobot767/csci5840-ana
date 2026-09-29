@@ -8,20 +8,90 @@
         Yaml
     </a>
     <a role="button" 
-       class="btn btn-outline-primary {{ 'active' if config_type == 'running' or request.path.endswith('/running') }}"
-       {{ 'aria-current="page"' if config_type == 'running' or request.path.endswith('/running') }}
+       class="btn btn-outline-primary {{ 'active' if config_type == 'ospf' or request.path.endswith('/ospf') }}"
+       {{ 'aria-current="page"' if config_type == 'ospf' or request.path.endswith('/ospf') }}
        data-bs-toggle="tooltip" data-bs-placement="top"
-       href="/device/view/{{ device }}/running"
-       title="Running Configuration">
-        Running Config
+       href="/device/view/{{ device }}/ospf"
+       title="OSPF Neighbor Table">
+        OSPF
     </a>
     <a role="button" 
-       class="btn btn-outline-primary {{ 'active' if config_type == 'startup' or request.path.endswith('/startup') }}"
-       {{ 'aria-current="page"' if config_type == 'startup' or request.path.endswith('/startup') }}
+       class="btn btn-outline-primary {{ 'active' if config_type == 'bgp' or request.path.endswith('/bgp') }}"
+       {{ 'aria-current="page"' if config_type == 'bgp' or request.path.endswith('/bgp') }}
        data-bs-toggle="tooltip" data-bs-placement="top"
-       href="/device/view/{{ device }}/startup"
-       title="Startup Configuration">
-        Startup Config
+       href="/device/view/{{ device }}/bgp"
+       title="BGP Neighbor Table">
+        BGP
     </a>
+    <a role="button" 
+       class="btn btn-outline-primary {{ 'active' if config_type == 'route' or request.path.endswith('/route') }}"
+       {{ 'aria-current="page"' if config_type == 'route' or request.path.endswith('/route') }}
+       data-bs-toggle="tooltip" data-bs-placement="top"
+       href="/device/view/{{ device }}/route"
+       title="Routing Table">
+        Route Table
+    </a>
+    <a role="button" 
+       class="btn btn-outline-primary {{ 'active' if config_type == 'cpu' or request.path.endswith('/cpu') }}"
+       {{ 'aria-current="page"' if config_type == 'cpu' or request.path.endswith('/cpu') }}
+       data-bs-toggle="tooltip" data-bs-placement="top"
+       href="/device/view/{{ device }}/cpu"
+       title="CPU Utilization">
+        CPU
+    </a>
+    <a role="button" 
+       class="btn btn-outline-primary {{ 'active' if config_type == 'ping' or request.path.endswith('/ping') }}"
+       {{ 'aria-current="page"' if config_type == 'ping' or request.path.endswith('/ping') }}
+       data-bs-toggle="tooltip" data-bs-placement="top"
+       href="/device/view/{{ device }}/ping"
+       title="Ping Test">
+        Ping
+    </a>
+    <a role="button" 
+       class="btn btn-outline-primary {{ 'active' if config_type == 'tshoot' or request.path.endswith('/tshoot') }}"
+       {{ 'aria-current="page"' if config_type == 'tshoot' or request.path.endswith('/tshoot') }}
+       data-bs-toggle="tooltip" data-bs-placement="top"
+       href="/device/view/{{ device }}/tshoot"
+       title="Troubleshoot Diagnostics">
+        TSHOOT
+    </a>
+</div>
+
+<!-- Config Diff Action Buttons Below -->
+<div class="mt-2">
+    <div class="btn-group" role="group" aria-label="Device Diff Actions">
+        <a role="button" 
+        class="btn btn-outline-primary {{ 'active' if config_type == 'running' or request.path.endswith('/running') }}"
+        {{ 'aria-current="page"' if config_type == 'running' or request.path.endswith('/running') }}
+        data-bs-toggle="tooltip" data-bs-placement="top"
+        href="/device/view/{{ device }}/running"
+        title="Running Configuration">
+            Running Config
+        </a>
+        <a role="button" 
+        class="btn btn-outline-primary {{ 'active' if config_type == 'startup' or request.path.endswith('/startup') }}"
+        {{ 'aria-current="page"' if config_type == 'startup' or request.path.endswith('/startup') }}
+        data-bs-toggle="tooltip" data-bs-placement="top"
+        href="/device/view/{{ device }}/startup"
+        title="Startup Configuration">
+            Startup Config
+        </a>
+        <a role="button"
+           class="btn btn-outline-warning {{ 'active' if config_type == 'running_diff' or request.path.endswith('/running/diff') }}"
+           {{ 'aria-current="page"' if config_type == 'running_diff' or request.path.endswith('/running/diff') }}
+           data-bs-toggle="tooltip" data-bs-placement="top"
+           href="/device/view/{{ device }}/running/diff"
+           title="Running Config vs Golden Config Diff">
+            Running Config (diff)
+        </a>
+        <a role="button"
+           class="btn btn-outline-warning {{ 'active' if config_type == 'startup_diff' or request.path.endswith('/startup/diff') }}"
+           {{ 'aria-current="page"' if config_type == 'startup_diff' or request.path.endswith('/startup/diff') }}
+           data-bs-toggle="tooltip" data-bs-placement="top"
+           href="/device/view/{{ device }}/startup/diff"
+           title="Startup Config vs Golden Config Diff">
+            Startup Config (diff)
+        </a>
+    </div>
 </div>
 <br>

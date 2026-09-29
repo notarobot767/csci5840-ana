@@ -6,6 +6,12 @@ ENV TZ="Etc/UTC"
 # https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
 #
 WORKDIR /app
+
+# Install iputils-ping (provides ping and ping6)
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends iputils-ping && \
+    rm -rf /var/lib/apt/lists/*
+    
 COPY ./requirements.txt ./
 RUN pip install --no-cache-dir -r ./requirements.txt
 ENTRYPOINT [ "/etc/docker-entrypoint.sh" ]
