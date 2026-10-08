@@ -1,35 +1,31 @@
 ---
 services:
   www:
-    command: [
-      "--workers", "4",
-      "--bind", "0.0.0.0:8080",
-      "wsgi:app"
-    ]
     networks:
       - www
     environment:
-      TZ: America/Denver
+      TZ: $TZ
+      PYTHONPATH: /app/src
     build:
-      target: www
-      context: .
+      context: ./app/nmas
     ports:
       - 172.31.255.255:80:8080
     volumes:
-      - ./golden_configs:/golden
+      - ./app/nmas:/app
+      - ../golden_configs:/golden
     restart: unless-stopped
   webtest:
     networks:
       - www
     environment:
-      TZ: America/Denver
+      TZ: $TZ
+      PYTHONPATH: /app/src
     build:
-      target: webtest
-      context: .
+      context: ./app/webtest
     ports:
       - 172.31.255.255:81:5000
     volumes:
-      - ./app:/app
+      - ./app/nmas:/app
       - ../golden_configs:/golden
     restart: unless-stopped
 networks:

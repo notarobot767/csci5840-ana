@@ -22,8 +22,8 @@ ANSI_ESCAPE = re.compile(
 
 
 def get_devices():
-  config_path = Path("device_config.yaml")
-  creds_path = Path("device_creds.yaml")
+  config_path = Path("secrets/device_config.yaml")
+  creds_path = Path("secrets/device_creds.yaml")
 
   configs = (
       yaml.safe_load(config_path.read_text()) if config_path.exists() else {}

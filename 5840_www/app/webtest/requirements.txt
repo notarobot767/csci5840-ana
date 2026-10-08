@@ -1,0 +1,4 @@
+flask
+netmiko
+pyyaml
+scp

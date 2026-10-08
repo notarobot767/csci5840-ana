@@ -1,6 +1,6 @@
 .icmp6_template: &icmp6_defaults
   type: icmp
-  schedule: '@every 30s'
+  schedule: '@every 10s'
   timeout: 2s
   ipv4: false
   ipv6: true
@@ -31,6 +31,9 @@ heartbeat.monitors:
   - <<: *icmp6_defaults
     id: s4
     hosts: ["2600:bad:c0de::14"]
+  - <<: *icmp6_defaults
+    id: www
+    hosts: ["2600:cafe:babe:f00d::10"]
 
 setup.template:
   name: "heartbeat-army"

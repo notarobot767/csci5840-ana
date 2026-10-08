@@ -21,7 +21,7 @@ services:
     volumes:
       - ./data/elastic:/usr/share/elasticsearch/data
     ports:
-      - 9200:9200
+      - 172.31.255.255:9200:9200
     restart: unless-stopped
   kibana:
     # https://www.elastic.co/guide/en/elasticsearch/reference/current/security-minimal-setup.html
@@ -35,11 +35,11 @@ services:
       SERVERNAME: Army
       SERVER_HOST: 0.0.0.0
       #SERVER_PUBLICBASEURL: 'https://kibana.tss.usar.army.mil'
-      ELASTICSEARCH_HOSTS: '["http://elasticsearch:9200"]'
+      ELASTICSEARCH_HOSTS: '["http://172.31.255.255:9200"]'
     volumes:
       - ./data/kibana:/usr/share/kibana/data
     ports:
-      - 5601:5601
+      - 172.31.255.255:5601:5601
     restart: unless-stopped
   fb_netflow:
     image: docker.elastic.co/beats/filebeat:$TAG
