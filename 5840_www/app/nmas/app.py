@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import dev.mgmt
+import dev.show
 import razzledazzle
 import file_object
 
@@ -37,6 +38,22 @@ def device_view():
 def device_view_device(device):
     return redirect(url_for("device_view_device_yaml", device=device))
 
+def device_view_divice_function(device, html):
+    return render_template(
+        "template.html",
+        device=device,
+        devices=devices,
+        title="view",
+        h1=f"View Device: {device}",
+        config_type="yaml",
+        comp1="components/dev_mgmt/app_buttons.html",
+        comp2="components/dev_mgmt/device_buttons_view.html",
+        comp3="components/dev_mgmt/device_buttons_view_function.html",
+        comp4=html,
+        #yaml_content=dev.mgmt.get_device_yaml(device),
+        #device_data=dev.mgmt.get_devices().get(device, {}),
+    )
+
 @app.route("/device/view/<device>/yaml")
 def device_view_device_yaml(device):
     devices = dev.mgmt.get_device_list()
@@ -68,9 +85,9 @@ def device_view_device_startup(device):
         flash(f"Device '{device}' does not exist.", "warning")
         return redirect(url_for("device_view"))
 
-    success, result = dev.mgmt.get_device_startup_config(device)
+    result = dev.show.get_startup(device)
 
-    if not success:
+    if not result:
         flash(result, "danger")
         config_content = f"! Error retrieving configuration via SSH:\n! {result}"
     else:
@@ -98,9 +115,9 @@ def device_view_device_running(device):
         flash(f"Device '{device}' does not exist.", "warning")
         return redirect(url_for("device_view"))
 
-    success, result = dev.mgmt.get_device_running_config(device)
+    result = dev.show.get_running(device)
 
-    if not success:
+    if not result:
         flash(result, "danger")
         config_content = f"! Error retrieving configuration via SSH:\n! {result}"
     else:
@@ -275,15 +292,18 @@ def device_view_device_ospf(device):
         flash(f"Device '{device}' does not exist.", "warning")
         return redirect(url_for("device_view"))
 
-    success, result = dev.mgmt.get_device_ospf_neighbors(device)
-    config_content = (
-        result
-        if success
-        else f"! Error retrieving OSPF neighbor table via SSH:\n! {result}"
-    )
-    if not success:
-        flash(result, "danger")
+    config_content = dev.show.get_ospf_neighbors(device)
 
+    if config_content is None:
+        flash(
+            f"Failed to connect or retrieve OSPF data from {device}.",
+            "danger",
+        )
+        config_content = "! Unable to retrieve OSPF neighbor data (connection failed)"
+    elif not config_content.strip():
+        config_content = "! No active OSPF neighbors found."
+
+    
     return render_template(
         "template.html",
         device=device,
@@ -307,13 +327,8 @@ def device_view_device_bgp(device):
         flash(f"Device '{device}' does not exist.", "warning")
         return redirect(url_for("device_view"))
 
-    success, result = dev.mgmt.get_device_bgp_neighbors(device)
-    config_content = (
-        result
-        if success
-        else f"! Error retrieving BGP neighbor table via SSH:\n! {result}"
-    )
-    if not success:
+    config_content = dev.show.get_bgp_neighbors(device)
+    if config_content is None:
         flash(result, "danger")
 
     return render_template(
@@ -331,7 +346,6 @@ def device_view_device_bgp(device):
         device_data=dev.mgmt.get_devices().get(device, {}),
     )
 
-
 @app.route("/device/view/<device>/route")
 def device_view_device_route(device):
     devices = dev.mgmt.get_device_list()
@@ -339,13 +353,8 @@ def device_view_device_route(device):
         flash(f"Device '{device}' does not exist.", "warning")
         return redirect(url_for("device_view"))
 
-    success, result = dev.mgmt.get_device_route_table(device)
-    config_content = (
-        result
-        if success
-        else f"! Error retrieving Route Table via SSH:\n! {result}"
-    )
-    if not success:
+    config_content = dev.show.get_route_table(device)
+    if config_content is None:
         flash(result, "danger")
 
     return render_template(
@@ -371,13 +380,9 @@ def device_view_device_cpu(device):
         flash(f"Device '{device}' does not exist.", "warning")
         return redirect(url_for("device_view"))
 
-    success, result = dev.mgmt.get_device_cpu(device)
-    config_content = (
-        result
-        if success
-        else f"! Error retrieving CPU utilization via SSH:\n! {result}"
-    )
-    if not success:
+    config_content = dev.show.get_device_cpu(device)
+    if not config_content:
+        config_content = f"! Error retrieving CPU utilization via SSH:\n! {result}"
         flash(result, "danger")
 
     return render_template(
@@ -402,13 +407,9 @@ def device_view_device_ping(device):
         flash(f"Device '{device}' does not exist.", "warning")
         return redirect(url_for("device_view"))
 
-    success, result = dev.mgmt.ping_device(device)
-    config_content = (
-        result
-        if success
-        else f"! Ping failed to execute:\n! {result}"
-    )
-    if not success:
+    config_content = dev.show.get_ping(device)
+    if not config_content:
+        config_content =  "! Ping failed to execute:\n!"
         flash(result, "warning")
 
     return render_template(
@@ -521,7 +522,7 @@ def device_view_device_startup_diff(device):
     
 def main():
     app.debug = True
-    app.run(host="0.0.0.0")
+    app.run(host="0.0.0.0", threaded=True)
 
 if __name__ == "__main__":
     main()

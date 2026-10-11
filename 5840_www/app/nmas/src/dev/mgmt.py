@@ -16,11 +16,6 @@ import paramiko
 import yaml
 import difflib
 
-ANSI_ESCAPE = re.compile(
-    r"\x1B(?:\][^\x07\x1B]*?(?:\x07|\x1B\\)|\[[0-?]*[ -/]*[@-~]|[@-Z\\-_])"
-)
-
-
 def get_devices():
   config_path = Path("secrets/device_config.yaml")
   creds_path = Path("secrets/device_creds.yaml")
@@ -44,10 +39,8 @@ def get_devices():
     )
   return devices
 
-
 def get_device_list():
   return sorted(get_devices().keys())
-
 
 def get_device_buttons(current_path=None):
   if current_path is None and has_request_context():
@@ -68,7 +61,6 @@ def get_device_buttons(current_path=None):
     )
   html.append("</div>\n<br><br>")
   return "\n".join(html)
-
 
 def get_device_yaml(device):
   data = get_devices().get(device)
@@ -92,7 +84,6 @@ def get_device_yaml(device):
   return yaml.dump(
       {device: cleaned_data}, default_flow_style=False, sort_keys=False
   )
-
 
 def add_device(
     hostname,
@@ -131,7 +122,6 @@ def add_device(
 
   return True, None
 
-
 def remove_device(hostname):
   config_path = Path("device_config.yaml")
   creds_path = Path("device_creds.yaml")
@@ -156,21 +146,6 @@ def remove_device(hostname):
     yaml.safe_dump(creds, f, default_flow_style=False, sort_keys=False)
 
   return True, None
-
-
-def get_raw_device_data(hostname):
-  config_path = Path("device_config.yaml")
-  creds_path = Path("device_creds.yaml")
-
-  configs = (
-      yaml.safe_load(config_path.read_text()) if config_path.exists() else {}
-  ) or {}
-  creds = (
-      yaml.safe_load(creds_path.read_text()) if creds_path.exists() else {}
-  ) or {}
-
-  return configs.get(hostname, {}), creds.get(hostname, {})
-
 
 def update_device(hostname, submitted_data):
   config_path = Path("device_config.yaml")
@@ -247,8 +222,8 @@ def update_device_from_yaml(hostname, raw_yaml_text):
   ) or {}
 
   cred_keys = {
-      "host",
-      "device_type",
+      "hostname",
+      "driver",
       "username",
       "password",
       "user",
@@ -274,238 +249,6 @@ def update_device_from_yaml(hostname, raw_yaml_text):
     yaml.safe_dump(creds, f, default_flow_style=False, sort_keys=False)
 
   return True, None
-
-
-def get_device_raw_combined_yaml(device):
-  cfg, cred = get_raw_device_data(device)
-  return yaml.dump({**cfg, **cred}, default_flow_style=False, sort_keys=False)
-
-
-# =====================================================================
-# SSH STREAM EXECUTION ENGINE
-# =====================================================================
-
-
-def _clean_stream(raw_text, command, device):
-  """Cleans ANSI escapes, normalizes newlines, strips echo/banners/prompts,
-
-  and stops cleanly at the terminal 'end' statement for configs.
-  """
-  sanitized = ANSI_ESCAPE.sub("", raw_text)
-  sanitized = sanitized.replace("\r\n", "\n").replace("\r", "\n")
-  lines = sanitized.split("\n")
-
-  cleaned = []
-  echo_dropped = False
-  cmd_stripped = command.strip()
-  dev_lower = device.lower()
-  is_config = any(w in command for w in ("running-config", "startup-config"))
-
-  for line in lines:
-    stripped = line.strip()
-    stripped_lower = stripped.lower()
-
-    # Drop only the first matching echo line
-    if not echo_dropped and stripped == cmd_stripped:
-      echo_dropped = True
-      continue
-
-    # Drop trailing prompt like r1# or switch-01#
-    if (
-        stripped_lower == f"{dev_lower}#"
-        or stripped_lower == f"{dev_lower}>"
-        or (
-            (stripped_lower.startswith(dev_lower) or "#" in stripped_lower)
-            and stripped_lower.endswith(("#", ">"))
-        )
-    ):
-      continue
-
-    # Drop AAA / syslog injected noise
-    if "%ACCOUNTING-" in stripped or "%SYS-" in stripped:
-      continue
-
-    # Drop Cisco / Arista banner & byte metadata lines
-    if stripped.startswith("Using ") and "bytes" in stripped:
-      continue
-    if stripped_lower == "building configuration...":
-      continue
-    if stripped.startswith("Current configuration : ") and stripped.endswith(
-        "bytes"
-    ):
-      continue
-
-    cleaned.append(line)
-
-    # For running/startup configs, stop immediately on the final 'end'
-    if is_config and stripped_lower == "end":
-      break
-
-  # Trim any lingering blank lines at the top or bottom
-  while cleaned and not cleaned[0].strip():
-    cleaned.pop(0)
-  while cleaned and not cleaned[-1].strip():
-    cleaned.pop()
-
-  return "\n".join(cleaned)
-
-
-def execute_show_command(device, command):
-  """Executes command using interactive shell with accurate stream termination."""
-  _, creds = get_raw_device_data(device)
-  if not creds:
-    return False, f"Credentials for device '{device}' not found."
-
-  host = str(creds.get("host", "")).strip().strip("[]")
-  username = creds.get("username") or creds.get("user")
-  password = creds.get("password") or creds.get("pass")
-  dev_type = str(creds.get("device_type", "")).lower()
-  is_arista = (
-      "arista" in dev_type or "eos" in dev_type or device.lower().startswith("s")
-  )
-
-  if not host or not username:
-    return False, f"Missing host IP or username for device '{device}'."
-
-  dev_lower = device.lower()
-  is_config = any(w in command for w in ("running-config", "startup-config"))
-
-  ssh = paramiko.SSHClient()
-  ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-
-  try:
-    ssh.connect(
-        hostname=host,
-        username=username,
-        password=password,
-        look_for_keys=False,
-        allow_agent=False,
-        timeout=10,
-    )
-
-    channel = ssh.invoke_shell(term="vt100", width=512, height=1000)
-
-    # 1. Wait for initial prompt and set terminal parameters
-    time.sleep(1.2)
-    channel.send("terminal length 0\n")
-    time.sleep(0.3)
-
-    # Only Cisco supports 'terminal width 0'
-    if not is_arista:
-      channel.send("terminal width 0\n")
-      time.sleep(0.3)
-
-    # 2. Drain initial login banners and prompts completely
-    while channel.recv_ready():
-      channel.recv(65535)
-
-    # 3. Format command - append | no-more on EOS to prevent --More-- paging stalls
-    if is_arista and "| no-more" not in command:
-      cmd_to_send = f"{command} | no-more\n"
-    else:
-      cmd_to_send = f"{command}\n"
-
-    channel.send(cmd_to_send)
-
-    # 4. Stream accumulator
-    buf = ""
-    start = time.time()
-    max_timeout = 25.0 if is_config else 8.0
-    last_recv_time = time.time()
-
-    prompt_regex = re.compile(
-        rf"(?:[\r\n]|^){re.escape(dev_lower)}(?:[\w\-\./\(\)]*)?[#>]\s*$",
-        re.IGNORECASE,
-    )
-
-    while time.time() - start < max_timeout:
-      if channel.recv_ready():
-        chunk = channel.recv(65535).decode("utf-8", errors="replace")
-        buf += chunk
-        last_recv_time = time.time()
-      else:
-        time.sleep(0.05)
-        # Check termination when output pauses for at least 0.35s
-        if buf and (time.time() - last_recv_time > 0.35):
-          norm = (
-              ANSI_ESCAPE.sub("", buf)
-              .replace("\r\n", "\n")
-              .replace("\r", "\n")
-              .rstrip()
-          )
-
-          # Verify if the prompt is sitting at the bottom of the output
-          if prompt_regex.search(norm):
-            if is_config:
-              # For configs, confirm 'end' was already printed before the prompt
-              if "\nend" in norm.lower():
-                break
-            else:
-              break
-
-    output = _clean_stream(buf, command, device)
-    return True, output if output else "(No active entries found)"
-
-  except Exception as e:
-    return False, f"Connection failed to {host}: {str(e)}"
-  finally:
-    ssh.close()
-
-
-def get_device_startup_config(device):
-  """Fetches 'show startup-config'."""
-  return execute_show_command(device, "show startup-config")
-
-
-def get_device_running_config(device):
-  """Fetches 'show running-config'."""
-  return execute_show_command(device, "show running-config")
-
-
-# =====================================================================
-# OPERATIONAL SHOW COMMANDS (IPv6 ONLY)
-# =====================================================================
-
-
-def get_device_ospf_neighbors(device):
-  """Fetches the OSPFv3 neighbor list for Cisco and Arista."""
-  _, creds = get_raw_device_data(device)
-  dev_type = str(creds.get("device_type", "")).lower()
-
-  if "arista" in dev_type or "eos" in dev_type or device.lower().startswith("s"):
-    # Arista EOS OSPFv3
-    cmd = "show ipv6 ospf neighbor"
-  else:
-    # Cisco IOS OSPFv3 (detail shows full IPv6 link-local and interface info)
-    cmd = "show ospfv3 neighbor"
-
-  return execute_show_command(device, cmd)
-
-
-def get_device_bgp_neighbors(device):
-  """Fetches BGP IPv6 neighbor summary using standard syntax across both vendors."""
-  # 'show bgp ipv6 unicast summary' is valid for both Cisco IOS and Arista EOS
-  return execute_show_command(device, "show bgp ipv6 unicast summary")
-
-
-def get_device_route_table(device):
-  """Fetches IPv6 routing table."""
-  return execute_show_command(device, "show ipv6 route")
-
-
-def get_device_cpu(device):
-  """Fetches CPU utilization safely for both Arista and Cisco."""
-  _, creds = get_raw_device_data(device)
-  dev_type = str(creds.get("device_type", "")).lower()
-
-  if "arista" in dev_type or "eos" in dev_type or device.lower().startswith("s"):
-    # show processes top once with | no-more prevents interactive curses blocking
-    cmd = "show processes top once"
-  else:
-    cmd = "show processes cpu"
-
-  return execute_show_command(device, cmd)
-
 
 # =====================================================================
 # PASSWORD ROTATION & CREDS
@@ -657,65 +400,6 @@ def update_all_device_passwords(apply_to_devices: bool = True):
 
   return True, report
 
-
-def ping_device(device, count=3, wait_timeout=1):
-  """Pings the device IP address from the web server with a strict timeout."""
-  _, creds = get_raw_device_data(device)
-  if not creds:
-    return False, f"Credentials/info for device '{device}' not found."
-
-  host = str(creds.get("host", "")).strip().strip("[]")
-  if not host:
-    return False, f"Missing host address for device '{device}'."
-
-  is_ipv6 = ":" in host
-  cmd_candidates = [
-      [
-          "ping",
-          "-6" if is_ipv6 else "-4",
-          "-c",
-          str(count),
-          "-W",
-          str(wait_timeout),
-          host,
-      ],
-      [
-          "ping6" if is_ipv6 else "ping",
-          "-c",
-          str(count),
-          "-W",
-          str(wait_timeout),
-          host,
-      ],
-  ]
-
-  max_exec_time = (count * wait_timeout) + 1
-
-  last_error = None
-  for cmd in cmd_candidates:
-    try:
-      proc = subprocess.run(
-          cmd,
-          stdout=subprocess.PIPE,
-          stderr=subprocess.STDOUT,
-          text=True,
-          timeout=max_exec_time,
-      )
-      return True, proc.stdout.strip()
-    except subprocess.TimeoutExpired:
-      return (
-          False,
-          f"Ping timed out after {max_exec_time}s. Host {host} is unreachable.",
-      )
-    except FileNotFoundError:
-      last_error = "Ping executable not found on server system."
-      continue
-    except Exception as e:
-      last_error = str(e)
-      break
-
-  return False, last_error or "Failed to execute ping."
-
 def get_golden_config(device):
     """Loads the golden configuration from /golden/<device>.cfg and strips leading/trailing newlines."""
     golden_path = Path("/golden") / f"{device}.cfg"
@@ -794,12 +478,10 @@ def build_side_by_side_diff(golden_text, live_text, context_lines=2):
                         "l_num": j1 + k + 1, "l_line": l_lines[j1 + k],
                         "l_class": "table-success bg-success bg-opacity-25",
                     })
-
     return rows
 
 def main():
   print(update_all_device_passwords())
-
 
 if __name__ == "__main__":
   main()

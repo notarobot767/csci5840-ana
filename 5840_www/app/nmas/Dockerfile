@@ -15,7 +15,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         iputils-ping && \
     \
     # install python requirements
-    pip install --no-cache-dir -r ./requirements.txt && \
+    pip3 install --upgrade pip --no-cache-dir && \
+    pip3 install --no-cache-dir -r ./requirements.txt && \
     \
     # remove cache
     rm -rf /var/lib/apt/lists/*

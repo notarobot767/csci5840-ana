@@ -1,4 +1,5 @@
 flask
+napalm
 netmiko
 pyyaml
 scp
