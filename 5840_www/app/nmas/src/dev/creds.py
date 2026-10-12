@@ -2,14 +2,23 @@
 
 import file_object
 
-def get_creds():
+def get_creds() -> dict:
     cred_file = "secrets/device_creds.yaml"
-    return file_object.read_file_yaml(cred_file)
+    creds = file_object.read_file_yaml(cred_file)
+    if creds:
+        return creds
+    return None
 
-def get_device_cred(device):
+def get_device_cred(device: str) -> dict:
     cred =  get_creds()[device]
     if cred:
         return cred
+    return None
+
+def get_devices() -> list[str]:
+    devices = get_creds()
+    if devices and len(devices) > 0:
+        return sorted(get_creds().keys())
     return None
 
 def get_driver(device: str):
@@ -25,7 +34,7 @@ def get_hostname(device: str):
     return None
 
 def main():
-    pass
+    print(get_devices())
 
 if __name__ == "__main__":
     main()

@@ -5,20 +5,36 @@
     {% include "components/navbar.html" %}
     <h1>{{ h1 }}</h1>
 
-    {% if comp1 is defined %}
-    {% include comp1 %}
+    {% if comp1_template is defined %}
+    {% include comp1_template %}
     {% endif %}
 
-    {% if comp2 is defined %}
-    {% include comp2 %}
+    {% if comp1_func is defined %}
+    {{ comp1_func | safe }}
     {% endif %}
 
-    {% if comp3 is defined %}
-    {% include comp3 %}
+    {% if comp2_template is defined %}
+    {% include comp2_template %}
     {% endif %}
 
-    {% if comp4 is defined %}
-    {% include comp4 %}
+    {% if comp2_func is defined %}
+    {{ comp2_func | safe }}
+    {% endif %}
+
+    {% if comp3_template is defined %}
+    {% include comp3_template %}
+    {% endif %}
+
+    {% if comp3_func is defined %}
+    {{ comp3_func | safe }}
+    {% endif %}
+
+    {% if comp4_template is defined %}
+    {% include comp4_template %}
+    {% endif %}
+
+    {% if comp4_func is defined %}
+    {{ comp4_func | safe }}
     {% endif %}
 
     {% include "components/footer.html" %}

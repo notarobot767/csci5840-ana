@@ -7,8 +7,11 @@ import yaml
 
 def read_file(file):
     """read file and return contents"""
-    with open(file) as file_reader:
-        return file_reader.read()
+    try:
+        with open(file) as file_reader:
+            return file_reader.read()
+    except:
+        return None
     
 def write_file(file, data):
     """write contents of data to file"""
@@ -17,8 +20,11 @@ def write_file(file, data):
 
 def read_file_json(file):
     """read file as return contents as json object"""
-    with open(file) as file_reader:
-        return load(file_reader)
+    try:
+        with open(file) as file_reader:
+            return load(file_reader)
+    except:
+        return None
 
 def read_file_yaml(file: str | Path) -> Any:
     """Safely read and parse a YAML file into Python objects."""

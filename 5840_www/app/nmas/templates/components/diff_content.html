@@ -1,0 +1,126 @@
+<style>
+    .diff-table {
+        font-family: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+        font-size: 0.82rem;
+        table-layout: fixed;
+        width: 100%;
+        margin-bottom: 0;
+    }
+    /* Lock line number columns to minimum width */
+    .diff-col-num {
+        width: 3.5%;
+        white-space: nowrap;
+    }
+    /* Split configuration code columns evenly */
+    .diff-col-code {
+        width: 46.5%;
+    }
+    .diff-num {
+        white-space: nowrap;
+        user-select: none;
+        color: #6c757d;
+        text-align: left !important;
+        padding-left: 6px !important;
+        padding-right: 6px !important;
+        border-right: 1px solid #dee2e6;
+        vertical-align: top;
+    }
+    .diff-code {
+        white-space: pre-wrap;
+        word-break: break-all;
+        text-align: left !important;
+        padding-left: 8px !important;
+        vertical-align: top;
+    }
+    .diff-sep {
+        background-color: #f8f9fa;
+        color: #adb5bd;
+        font-style: italic;
+    }
+
+    /* Vivid diff colors matching reference */
+    .diff-table td.table-danger {
+        background-color: #f8d7da !important;
+        color: #842029 !important;
+    }
+    .diff-table td.table-success {
+        background-color: #d1e7dd !important;
+        color: #0f5132 !important;
+    }
+    .diff-table td.table-warning {
+        background-color: #fff3cd !important;
+        color: #664d03 !important;
+    }
+    .diff-table td.bg-light {
+        background-color: #f8f9fa !important;
+    }
+</style>
+
+<div class="card mb-4 border-0 shadow-sm rounded-3 overflow-hidden">
+    <!-- Header bar matching IDE style -->
+    <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center py-2 px-3">
+        <div class="d-flex align-items-center gap-2">
+            <span class="badge bg-danger text-white font-monospace text-lowercase">{{ label }}</span>
+            <span class="text-light fw-medium font-monospace small">{{ device }}</span>
+        </div>
+        <div>
+            <span class="badge bg-danger">Missing on Device</span>
+            <span class="badge bg-success">Added on Device</span>
+            <span class="badge bg-warning text-dark">Modified</span>
+        </div>
+    </div>
+    
+    <!-- Outer scroll wrapper without internal height restriction -->
+    <div class="table-responsive">
+        {% if diff_rows %}
+        <table class="table table-sm table-bordered diff-table mb-0">
+            <colgroup>
+                <col class="diff-col-num">
+                <col class="diff-col-code">
+                <col class="diff-col-num">
+                <col class="diff-col-code">
+            </colgroup>
+            <thead class="table-dark sticky-top">
+                <tr>
+                    <th colspan="2" class="text-start ps-3" style="width: 50%;">
+                        {{ left_label }}
+                    </th>
+                    <th colspan="2" class="text-start ps-3" style="width: 50%;">
+                        {{ right_label }}
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in diff_rows %}
+                    {% if row.is_separator %}
+                    <tr class="diff-sep">
+                        <td class="diff-num">...</td>
+                        <td class="diff-code text-muted">--- omitted lines ---</td>
+                        <td class="diff-num">...</td>
+                        <td class="diff-code text-muted">--- omitted lines ---</td>
+                    </tr>
+                    {% else %}
+                    {# Resolve class names dynamically from left_status and right_status #}
+                    {% set l_cls = 'table-danger' if row.left_status == 'delete' else ('table-warning' if row.left_status == 'replace' else ('bg-light' if row.left_status == 'empty' else '')) %}
+                    {% set r_cls = 'table-success' if row.right_status == 'insert' else ('table-warning' if row.right_status == 'replace' else ('bg-light' if row.right_status == 'empty' else '')) %}
+
+                    <tr>
+                        <!-- Left side -->
+                        <td class="diff-num {{ l_cls }}">{{ row.left_num }}</td>
+                        <td class="diff-code {{ l_cls }}">{{ row.left_line }}</td>
+
+                        <!-- Right side -->
+                        <td class="diff-num {{ r_cls }}">{{ row.right_num }}</td>
+                        <td class="diff-code {{ r_cls }}">{{ row.right_line }}</td>
+                    </tr>
+                    {% endif %}
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="alert alert-success m-3 mb-3">
+            <i class="bi bi-check-circle"></i> No configuration drift detected! Configurations match.
+        </div>
+        {% endif %}
+    </div>
+</div>

@@ -400,23 +400,6 @@ def update_all_device_passwords(apply_to_devices: bool = True):
 
   return True, report
 
-def get_golden_config(device):
-    """Loads the golden configuration from /golden/<device>.cfg and strips leading/trailing newlines."""
-    golden_path = Path("/golden") / f"{device}.cfg"
-    if not golden_path.exists():
-        # Fallback to local ./golden/ directory if running in local dev
-        alt_path = Path("golden") / f"{device}.cfg"
-        if alt_path.exists():
-            golden_path = alt_path
-        else:
-            return False, f"Golden config not found at /golden/{device}.cfg"
-    try:
-        content = golden_path.read_text(encoding="utf-8", errors="replace")
-        # .strip() removes all leading and trailing whitespace, empty lines, and newlines (\r, \n)
-        return True, content.strip()
-    except Exception as e:
-        return False, f"Failed reading golden config: {str(e)}"
-
 def build_side_by_side_diff(golden_text, live_text, context_lines=2):
     """Generates standard compact context diff (changes + 2 context lines) in side-by-side rows."""
     g_lines = golden_text.splitlines()
