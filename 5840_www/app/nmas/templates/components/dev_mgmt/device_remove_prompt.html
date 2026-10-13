@@ -10,15 +10,27 @@
         {% endif %}
     {% endwith %}
 
-    <!-- Action Bar -->
-    <div class="card border-danger shadow-sm">
-        <div class="card-body d-flex flex-wrap align-items-center justify-content-between gap-3 py-3">
+    <!-- Sanitized YAML Preview -->
+    <div class="card shadow-sm mb-3">
+        <!-- Title centered in the header -->
+        <div class="card-header bg-light text-center">
+            <span class="fw-semibold text-secondary">Configuration Preview (Sanitized)</span>
+        </div>
+        <!-- Left-aligned YAML content -->
+        <div class="card-body p-0">
+            <pre class="m-0 p-3 bg-dark text-light text-start rounded-bottom" style="font-family: monospace; font-size: 0.9rem; overflow-x: auto;"><code>{{ yaml_content or '# No configuration data found' }}</code></pre>
+        </div>
+    </div>
+
+    <!-- Centered Action Bar -->
+    <div class="card border-danger shadow-sm text-center">
+        <div class="card-body d-flex flex-column align-items-center justify-content-center gap-2 py-3">
             <div>
                 <span class="text-danger fw-bold fs-6">Remove Device: {{ device }}</span>
-                <div class="text-muted small">This will remove all configuration and credential entries from disk.</div>
+                <div class="text-muted small">This will permanently delete configuration and credential entries from disk.</div>
             </div>
-            <!-- Triggers the confirmation modal -->
-            <button type="button" class="btn btn-danger px-4" data-bs-toggle="modal" data-bs-target="#deleteConfirmModal">
+            <!-- Triggers confirmation modal -->
+            <button type="button" class="btn btn-danger px-4 mt-2" data-bs-toggle="modal" data-bs-target="#deleteConfirmModal">
                 Delete Device
             </button>
         </div>
@@ -32,16 +44,15 @@
                     <h5 class="modal-title" id="deleteModalLabel">Confirm Deletion</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <div class="modal-body">
+                <div class="modal-body text-center">
                     <p class="mb-0 fs-6">Are you sure you wish to delete device <strong>{{ device }}</strong>?</p>
                 </div>
-                <div class="modal-footer">
-                    <!-- Yes submits the deletion POST request -->
-                    <form method="POST" action="/device/remove/{{ device }}" class="m-0">
-                        <button type="submit" class="btn btn-danger">Yes</button>
+                <div class="modal-footer justify-content-center">
+                    <!-- Form submits the POST request to remove the device -->
+                    <form method="POST" action="{{ url_for('device_remove_device', device=device) }}" class="m-0">
+                        <button type="submit" class="btn btn-danger">Yes, Delete</button>
                     </form>
-                    <!-- No dismisses the dialog -->
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">No</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                 </div>
             </div>
         </div>

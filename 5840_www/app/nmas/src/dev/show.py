@@ -4,8 +4,10 @@ import dev.connect
 import dev.creds
 import file_object
 
+from itertools import dropwhile
 from pathlib import Path
 import difflib
+import re
 
 def _get_dict_one_value(x: dict) -> str:
     return next(iter(x.values()))
@@ -74,11 +76,44 @@ def get_golden(device):
     path = Path(f"/golden/{device}.cfg")
     return file_object.read_file(path).strip()
 
+def sanitize_config(config: str) -> str:
+    # 1. Strip PKI cert blocks first (avoids messing with line index loops)
+    config = re.sub(
+        r"crypto pki certificate chain[\s\S]*?\bquit\b",
+        "",
+        config,
+        flags=re.IGNORECASE,
+    )
+    config = re.sub(
+        r"certificate\s+(?:self-signed|ca)[\s\S]*?\bquit\b",
+        "",
+        config,
+        flags=re.IGNORECASE,
+    )
+
+    # 2. Strip leading banners, blank lines, and initial '!' comments
+    lines = config.splitlines()
+
+    def should_drop(line: str) -> bool:
+        stripped = line.replace("\xa0", " ").strip()
+        if not stripped:
+            return True
+        if stripped.startswith("!"):
+            return True
+        if stripped.lower().startswith("using ") and "bytes" in stripped.lower():
+            return True
+        return False
+
+    cleaned_lines = list(dropwhile(should_drop, lines))
+    return "\n".join(cleaned_lines)
+
 def build_side_by_side_diff(left_text, right_text, context_lines=1):
     """
     Generates compact context diff (changes + context lines) in side-by-side rows.
     Works for any two text/config inputs.
     """
+    left_text = sanitize_config(left_text)
+    right_text = sanitize_config(right_text)
     l_lines = left_text.splitlines() if left_text else []
     r_lines = right_text.splitlines() if right_text else []
 

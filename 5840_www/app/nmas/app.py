@@ -4,6 +4,9 @@ import dev.mgmt
 import dev.show
 import dev.creds
 import gui.objects
+import gui.add
+import gui.remove
+import gui.modify
 
 import razzledazzle
 import file_object
@@ -72,7 +75,7 @@ def _render_device_funct(device, content, label):
             comp1_func=gui.objects.get_dev_app_buttons(),
             comp2_func=gui.objects.get_device_view_buttons(),
             comp3_func=gui.objects.get_dev_func_buttons(device),
-            comp4_template="components/numbered_content.html",
+            comp4_template="components/dev_mgmt/numbered_content.html",
             content=content,
             device=device,
             label=label
@@ -81,7 +84,7 @@ def _render_device_funct(device, content, label):
 
 @app.route("/device/view/<device>/yaml")
 def device_view_device_yaml(device):
-    content = dev.mgmt.get_device_yaml(device)
+    content = dev.creds.get_device_yaml(device)
     label = "yaml"
     return _render_device_funct(device, content, label)
 
@@ -148,7 +151,7 @@ def _render_device_diff(device, left_cfg, right_cfg, left_label, right_label, di
         comp1_func=gui.objects.get_dev_app_buttons(),
         comp2_func=gui.objects.get_device_view_buttons(),
         comp3_func=gui.objects.get_dev_func_buttons(device),
-        comp4_template="components/diff_content.html",
+        comp4_template="components/dev_mgmt/diff_content.html",
         diff_rows=diff_rows,
         device=device,
         label=diff_tag,
@@ -191,15 +194,6 @@ def device_view_device_startup_diff(device):
 
 @app.route("/device/add", methods=["GET", "POST"])
 def device_add():
-    vendors = [
-        ("cisco_ios", "Cisco IOS"),
-        ("cisco_xe", "Cisco IOS-XE"),
-        ("cisco_xr", "Cisco IOS-XR"),
-        ("juniper_junos", "Juniper Junos"),
-        ("arista_eos", "Arista EOS")
-    ]
-    templates = ["ce", "pe", "core", "access"]
-
     if request.method == "POST":
         hostname = request.form.get("hostname", "").strip()
         ipv6 = request.form.get("ipv6", "").strip()
@@ -211,7 +205,7 @@ def device_add():
         if not all([hostname, ipv6, vendor, template, username, password]):
             flash("All fields are required.", "danger")
         else:
-            success, err = dev.mgmt.add_device(
+            success, err = gui.add.add_device(
                 hostname=hostname,
                 ipv6_addr=ipv6,
                 vendor=vendor,
@@ -229,98 +223,91 @@ def device_add():
         "template.html",
         title="Add Device",
         h1="Add Device",
-        comp1="components/dev_mgmt/app_buttons.html",
-        comp2="components/dev_mgmt/add.html",
-        vendors=vendors,
-        templates=templates
+        comp1_func=gui.objects.get_dev_app_buttons(),
+        comp2_template="components/dev_mgmt/add.html",
+        vendors=gui.add.get_vendors(),
+        templates=gui.add.get_templates()
     )
 
 @app.route("/device/remove")
 def device_remove():
-    device_list = dev.mgmt.get_device_list()
-    if device_list:
-        return redirect(url_for("device_remove_device", device=device_list[0]))
+    devices = dev.creds.get_devices()
+    if _is_safe_devices(devices):
+        return redirect(url_for("device_remove_device", device=devices[0]))
 
     flash("No devices available to remove.", "warning")
     return render_template(
         "template.html",
         title="Remove Device",
         h1="Remove Device",
-        comp1="components/dev_mgmt/app_buttons.html"
+        comp1_func=gui.objects.get_dev_app_buttons(),
     )
 
 @app.route("/device/remove/<device>", methods=["GET", "POST"])
 def device_remove_device(device):
-    devices = dev.mgmt.get_device_list()
+    if not _is_safe_device(device):
+        return _no_such_device(device)
 
     if request.method == "POST":
-        success, err = dev.mgmt.remove_device(device)
+        success, err = gui.remove.remove_device(device)
         if success:
             flash(f"Device '{device}' was successfully removed.", "success")
             return redirect(url_for("device_remove"))
         else:
             flash(err or f"Failed to remove device '{device}'.", "danger")
 
-    if device not in devices:
-        flash(f"Device '{device}' does not exist.", "warning")
-        return redirect(url_for("device_remove"))
-
     return render_template(
         "template.html",
         title="Remove Device",
         h1=f"Remove Device: {device}",
-        comp1="components/dev_mgmt/app_buttons.html",
-        comp2="components/dev_mgmt/device_buttons_remove.html",
-        comp3="components/dev_mgmt/device_buttons_view_function_yaml.html",
-        comp4="components/dev_mgmt/device_remove_prompt.html",
+        comp1_func=gui.objects.get_dev_app_buttons(),
+        comp2_func=gui.objects.get_device_view_buttons(func="remove"),
+        comp3_template="components/dev_mgmt/device_remove_prompt.html",
         device=device,
-        devices=devices,
-        yaml_content=dev.mgmt.get_device_yaml(device)
+        yaml_content=dev.creds.get_device_yaml(device)
     )
 
 @app.route("/device/modify")
 def device_modify():
-    device_list = dev.mgmt.get_device_list()
-    if device_list:
-        return redirect(url_for("device_modify_device", device=device_list[0]))
+    devices = dev.creds.get_devices()
+    if _is_safe_devices(devices):
+        return redirect(url_for("device_modify_device", device=devices[0]))
 
     flash("No devices available to modify.", "warning")
     return render_template(
         "template.html",
         title="Modify Device",
         h1="Modify Device",
-        comp1="components/dev_mgmt/app_buttons.html"
+        comp1_func=gui.objects.get_dev_app_buttons(),
     )
+
 
 @app.route("/device/modify/<device>", methods=["GET", "POST"])
 def device_modify_device(device):
-    devices = dev.mgmt.get_device_list()
-
-    if device not in devices:
-        flash(f"Device '{device}' does not exist.", "warning")
-        return redirect(url_for("device_modify"))
+    if not _is_safe_device(device):
+        return _no_such_device(device)
 
     if request.method == "POST":
         raw_yaml = request.form.get("raw_yaml", "")
-        success, err = dev.mgmt.update_device_from_yaml(device, raw_yaml)
+        success, err = gui.modify.update_device_from_yaml(device, raw_yaml)
         if success:
             flash(f"Device '{device}' configuration updated successfully!", "success")
+            return redirect(url_for("device_modify_device", device=device))
         else:
             flash(err, "danger")
-        return redirect(url_for("device_modify_device", device=device))
 
-    raw_content = dev.mgmt.get_device_raw_combined_yaml(device)
+    # Retrieve un-sanitized combined YAML so passwords/creds are editable
+    raw_content = dev.creds.get_device_yaml(device, sanitize=False) or ""
 
     return render_template(
         "template.html",
         title="Modify Device",
         h1=f"Modify Device: {device}",
-        comp1="components/dev_mgmt/app_buttons.html",
-        comp2="components/dev_mgmt/device_buttons_modify.html",
-        comp3="components/dev_mgmt/device_modify_form.html",
+        comp1_func=gui.objects.get_dev_app_buttons(),
+        comp2_func=gui.objects.get_device_view_buttons(func="modify", current_device=device),
+        comp3_template="components/dev_mgmt/device_modify_form.html",
         device=device,
-        devices=devices,
-        raw_yaml_content=raw_content
+        raw_yaml_content=raw_content,
     )
 
 @app.route("/roll/<int:num>d<int:sides>")

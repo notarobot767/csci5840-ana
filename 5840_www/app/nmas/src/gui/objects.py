@@ -133,7 +133,7 @@ def get_dev_app_buttons():
     return render_button_group(buttons, "Device Management Actions")
 
 
-def get_device_view_buttons(current_device=None):
+def get_device_view_buttons(func="view",current_device=None):
     """
     Fetches registered devices from dev.creds.get_devices() and generates
     a button for each.
@@ -146,7 +146,7 @@ def get_device_view_buttons(current_device=None):
     buttons = []
 
     for item in devices:
-        item_path = f"/device/view/{item}"
+        item_path = f"/device/{func}/{item}"
         
         # Matches /device/view/r1 exactly OR any sub-route like /device/view/r1/ospf
         is_active = (
@@ -158,7 +158,7 @@ def get_device_view_buttons(current_device=None):
         buttons.append(
             render_button(
                 name=item,
-                title=f"View {item}",
+                title=f"{func} {item}",
                 href=item_path,
                 is_active=is_active,
             )
@@ -186,3 +186,9 @@ def get_dev_func_buttons(device):
     )
 
     return f"{func_group}\n{config_group}"
+
+def main():
+    pass
+
+if __name__ == "__main__":
+    main()
