@@ -1,30 +1,40 @@
 FROM python:3.14
 
 ENV TZ="Etc/UTC"
-# set timezone variable to UTC
-# set actual timezone with TZ ENV variable in compose file
-# https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
 
 WORKDIR /app
 
 COPY ./requirements.txt ./
 
-# Install iputils-ping (provides ping and ping6)
+# 1. Install system utilities + SSH binaries needed by Ansible & network CLI
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    # install utils
-        iputils-ping && \
+        iputils-ping \
+        openssh-client \
+        sshpass \
+        libssh-dev \
+        libssl-dev \
+        gcc \
+        python3-dev \
+        build-essential && \
     \
-    # install python requirements
-    pip3 install --upgrade pip --no-cache-dir && \
+    # 2. Install Python dependencies
+    pip3 install --upgrade pip setuptools wheel --no-cache-dir && \
     pip3 install --no-cache-dir -r ./requirements.txt && \
     \
-    # remove cache
+    # 3. Pre-install Ansible Collections for your devices
+    ansible-galaxy collection install --no-cache \
+        ansible.netcommon \
+        cisco.ios \
+        arista.eos \
+        napalm.napalm && \
+    \
+    # 4. Cleanup apt cache
     rm -rf /var/lib/apt/lists/*
-    
+
 COPY ./docker-entrypoint.sh /etc/
 RUN chmod +x /etc/docker-entrypoint.sh
 
-# run app with gunicorn backend
+# Run app with gunicorn backend
 EXPOSE 5000
 ENTRYPOINT [ "/etc/docker-entrypoint.sh" ]
 CMD [ "--workers", "4", "--bind", "0.0.0.0:8080", "wsgi:app"]

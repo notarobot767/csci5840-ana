@@ -1,5 +1,14 @@
-flask
-napalm
+# Web & templating
+Flask
+PyYAML
+Jinja2
+
+# Network automation & SSH
 netmiko
-pyyaml
-scp
+paramiko
+ansible-pylibssh
+napalm
+napalm-ansible
+
+# Ansible Engine
+ansible-core

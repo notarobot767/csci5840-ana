@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-import dev.mgmt
 import dev.show
 import dev.creds
 import gui.objects
