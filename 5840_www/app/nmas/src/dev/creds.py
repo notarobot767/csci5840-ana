@@ -1,9 +1,7 @@
 #!/usr/bin/env python3
 
-import copy
-import yaml
 import file_object
-
+import copy, yaml, random, string, secrets
 
 def get_cred_path() -> str:
     return "secrets/device_creds.yaml"
@@ -59,6 +57,19 @@ def get_devices() -> list[str]:
     if creds:
         return sorted(creds.keys())
     return []
+
+def get_randon_device() -> str | None:
+    devices = get_devices()
+    if devices and len(devices) > 0:
+        return random.choice(devices)
+    return None
+
+def get_nonexistent_device() -> str:
+    devices = set(get_devices())
+    while True:
+        random_str = "".join(secrets.choice(string.ascii_letters) for _ in range(26))
+        if random_str not in devices:
+            return random_str
 
 def get_driver(device: str) -> str:
     dev_cred = get_device_cred(device)

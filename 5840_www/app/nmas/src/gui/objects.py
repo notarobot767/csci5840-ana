@@ -43,7 +43,6 @@ def render_button(
         f'{name}</a>'
     )
 
-
 def render_button_group(buttons_data, aria_label):
     """Wraps an iterable of rendered button HTML strings in a btn-group."""
     items = "\n    ".join(buttons_data)
@@ -52,7 +51,6 @@ def render_button_group(buttons_data, aria_label):
         f'    {items}\n'
         f'</div>\n<br>'
     )
-
 
 # ---------------------------------------------------------
 # Static Button Metadata

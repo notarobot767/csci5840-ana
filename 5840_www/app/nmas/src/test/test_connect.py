@@ -1,6 +1,9 @@
+#!/usr/bin/env python3
+
 from dev import connect, creds
 import pytest
 from napalm import get_network_driver
+import random
 
 def test_ping6():
     for device in creds.get_devices():
@@ -23,7 +26,20 @@ def test_get_connection():
             facts = conn.get_facts()
             assert facts is not None
             assert isinstance(facts, dict)
+
+def test_run_cmd():
+    device = creds.get_randon_device()
+    if device:
+        output = connect.run_cmd(device, "show version")
+        assert output is not None
+        assert isinstance(output, str)
+        assert "Uptime" in output
+    else:
+        assert device is None
             
+def test_run_cmd_nonexistent():
+    pass
+
 def main():
     pass
 

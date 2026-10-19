@@ -4,8 +4,10 @@ import copy
 import signal
 from contextlib import contextmanager
 from napalm import get_network_driver
+from napalm.base.exceptions import CommandErrorException, ConnectionException
 import dev.creds
 import subprocess
+import ast
 
 def ping6(target: str, count: int = 2, timeout: int = 2):
     cmd = ["ping", "-6", "-c", str(count), "-w", str(timeout), target]
@@ -82,13 +84,32 @@ def get_connection(device: str, max_retries: int = 3, timeout_sec: int = 3):
     print(f"Failed to connect to '{device}' after {max_retries} attempts.")
     return None
 
-def run_cmd(device: str, cmd: str) -> str:
-    if dev and cmd:
-        conn = get_connection(device)
+def run_cmd(device: str, cmd: str) -> str | None:
+    if device and cmd:
+        try:
+            conn = get_connection(device)
+        except ConnectionException:
+            return None
+
         if conn:
             try:
                 result = conn.cli([cmd])
                 return next(iter(result.values())).strip()
+            except CommandErrorException as exc:
+                err_payload = exc.args[0] if exc.args else str(exc)
+
+                if isinstance(err_payload, dict):
+                    return next(iter(err_payload.values())).strip()
+
+                if isinstance(err_payload, str) and err_payload.strip().startswith("{"):
+                    try:
+                        parsed = ast.literal_eval(err_payload)
+                        if isinstance(parsed, dict) and parsed:
+                            return next(iter(parsed.values())).strip()
+                    except (ValueError, SyntaxError):
+                        pass
+
+                return str(err_payload).strip()
             finally:
                 conn.close()
     return None
@@ -97,15 +118,7 @@ def run_cmd_set(device: str, cmd_lst: list[str]) -> dict:
     pass
 
 def main():
-    conn = get_connection("s1")
-    if not conn:
-        print("Could not establish connection.")
-        return
-    try:
-        facts = conn.get_facts()
-        print(facts)
-    finally:
-        conn.close()
+    pass
 
 if __name__ == "__main__":
     main()

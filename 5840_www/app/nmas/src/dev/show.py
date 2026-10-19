@@ -13,9 +13,8 @@ def _get_dict_one_value(x: dict) -> str:
     return next(iter(x.values()))
 
 def get_ospf_neighbors(device: str) -> str:
-    if not device:
-        return None
     driver = dev.creds.get_driver(device)
+    cmd = None
     if driver:
         match driver:
             case "ios":
@@ -24,12 +23,28 @@ def get_ospf_neighbors(device: str) -> str:
                 cmd = "show ipv6 ospf neighbor"
             case _:
                 cmd = None
+    else:
+        return None
     if cmd:
         return dev.connect.run_cmd(device, cmd)
     return None
 
 def get_bgp_neighbors(device: str) -> str:
-    return dev.connect.run_cmd(device, "show bgp ipv6 unicast summary")
+    driver = dev.creds.get_driver(device)
+    cmd = None
+    if driver:
+        match driver:
+            case "ios":
+                cmd = "show bgp ipv6 unicast summary"
+            case "eos":
+                cmd = "show bgp summary"
+            case _:
+                cmd = None
+    else:
+        return None
+    if cmd:
+        return dev.connect.run_cmd(device, cmd)
+    return None
 
 def get_route_table(device: str) -> str:
     return dev.connect.run_cmd(device, "show ipv6 route")
@@ -38,6 +53,7 @@ def get_device_cpu(device: str) -> str:
     if not device:
         return None
     driver = dev.creds.get_driver(device)
+    cmd = None
     if driver:
         match driver:
             case "ios":
@@ -53,16 +69,18 @@ def get_device_cpu(device: str) -> str:
 def get_ping(device: str) -> str:
     if device:
         hostname = dev.creds.get_hostname(device)
-        return dev.connect.ping6(hostname).stdout
+        if hostname:
+            return dev.connect.ping6(hostname).stdout
     return None
 
 def _get_config(device: str, config_type: str) -> str:
     if device and config_type:
         conn = dev.connect.get_connection(device)
-        result = conn.get_config(config_type)
-        conn.close()
-        if result:
-            return result[config_type].strip()
+        if conn:
+            result = conn.get_config(config_type)
+            conn.close()
+            if result:
+                return result[config_type].strip()
     return None
 
 def get_running(device: str) -> str:
@@ -74,7 +92,10 @@ def get_startup(device: str) -> str:
 def get_golden(device):
     """Loads the golden configuration from /golden/<device>.cfg and strips leading/trailing newlines."""
     path = Path(f"/golden/{device}.cfg")
-    return file_object.read_file(path).strip()
+    output = file_object.read_file(path)
+    if output:
+        return output.strip()
+    return None
 
 def sanitize_config(config: str) -> str:
     # 1. Strip PKI cert blocks first (avoids messing with line index loops)

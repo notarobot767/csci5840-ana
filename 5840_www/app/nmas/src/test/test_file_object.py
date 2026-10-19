@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import file_object
 import pytest
 from pathlib import Path

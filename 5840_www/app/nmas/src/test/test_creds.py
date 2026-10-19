@@ -1,9 +1,8 @@
+#!/usr/bin/env python3
+
 from dev import creds
 import pytest
 import yaml
-
-def _non_existent_device():
-    return "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz"
 
 #####################
 # Path & Helper Tests
@@ -39,7 +38,7 @@ def test_get_device_cred():
 
 def test_get_device_cred_non_existent():
     """trying to pull a nonexistent device"""
-    cred = creds.get_device_cred(_non_existent_device())
+    cred = creds.get_device_cred(creds.get_nonexistent_device())
     assert cred is None
 
 def test_get_devices():
@@ -55,7 +54,7 @@ def test_get_driver():
         assert driver in ["eos", "junos", "iosxr_netconf", "iosxr", "nxos", "nxos_ssh", "ios"]
 
 def test_get_driver_nonexistent():
-    driver = creds.get_driver(_non_existent_device())
+    driver = creds.get_driver(creds.get_nonexistent_device())
     assert driver is None
 
 def test_get_hostname():
@@ -65,7 +64,7 @@ def test_get_hostname():
         assert isinstance(hostname, str)
 
 def test_get_hostname_nonexistent():
-    hostname = creds.get_hostname(_non_existent_device())
+    hostname = creds.get_hostname(creds.get_nonexistent_device())
     assert hostname is None
 
 def main():
