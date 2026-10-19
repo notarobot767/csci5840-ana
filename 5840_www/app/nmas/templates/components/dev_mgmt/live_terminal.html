@@ -1,0 +1,43 @@
+<!-- components/dev_mgmt/live_terminal.html -->
+<div class="card bg-dark text-light p-3 mt-3 text-start">
+    <div class="d-flex flex-column align-items-start mb-2 border-bottom pb-2 gap-2">
+        <div class="d-flex align-items-center gap-2">
+            <span class="badge bg-primary" id="status-badge">Running...</span>
+            <button class="btn btn-sm btn-outline-light" onclick="clearTerminal()">Clear</button>
+        </div>
+    </div>
+    <pre id="terminal-output" class="text-start m-0" style="white-space: pre-wrap; word-break: break-all; font-family: monospace; font-size: 0.9rem; text-align: left; overflow: visible;"></pre>
+</div>
+
+<script>
+    const outputBox = document.getElementById("terminal-output");
+    const statusBadge = document.getElementById("status-badge");
+    const streamSource = new EventSource("{{ stream_url }}");
+
+    streamSource.onmessage = function(event) {
+        if (event.data === "[DONE]") {
+            statusBadge.className = "badge bg-success";
+            statusBadge.textContent = "Finished";
+            streamSource.close();
+            return;
+        }
+
+        outputBox.textContent += event.data + "\n";
+        
+        // Auto-scroll the browser window to follow output
+        window.scrollTo({
+            top: document.body.scrollHeight,
+            behavior: "smooth"
+        });
+    };
+
+    streamSource.onerror = function() {
+        statusBadge.className = "badge bg-danger";
+        statusBadge.textContent = "Connection Terminated";
+        streamSource.close();
+    };
+
+    function clearTerminal() {
+        outputBox.textContent = "";
+    }
+</script>

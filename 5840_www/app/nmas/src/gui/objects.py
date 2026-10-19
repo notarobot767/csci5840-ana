@@ -64,27 +64,32 @@ APP_BUTTONS = [
         "href": "https://kibana.badcode.app/",
         "title": "Network Visualizer",
         "target": "_blank",
-        "rel": "noopener noreferrer",
+        "rel": "noopener noreferrer"
     },
     {
         "name": "Code",
         "href": "https://code.badcode.app/",
         "title": "VS Code Server",
         "target": "_blank",
-        "rel": "noopener noreferrer",
+        "rel": "noopener noreferrer"
     },
     {
         "name": "Guac",
         "href": "https://guac.badcode.app/guacamole/",
         "title": "Apache Guacamole",
         "target": "_blank",
-        "rel": "noopener noreferrer",
+        "rel": "noopener noreferrer"
     },
     {
         "name": "Device MGMT",
         "href": "/device",
-        "title": "Device Management",
+        "title": "Device Management"
     },
+    {
+        "name": "Roll",
+        "href": "/roll/1d20",
+        "title": "Roll for initiative",
+    }
 ]
 
 DEVICE_APP_BUTTONS = [
@@ -92,6 +97,7 @@ DEVICE_APP_BUTTONS = [
     {"name": "Add", "href": "/device/add", "title": "Add Device"},
     {"name": "Remove", "href": "/device/remove", "title": "Remove Device"},
     {"name": "Modify", "href": "/device/modify", "title": "Modify Device"},
+    {"name": "Unit-Test", "href": "/device/test", "title": "Unit Testing"}
 ]
 
 DEV_FUNC_BUTTONS = [
@@ -113,6 +119,10 @@ DEV_CONFIG_BUTTONS = [
     {"name": "Start/Golden (diff)", "title": "Startup Config vs Golden Config Diff", "location": "startup/diff"},
 ]
 
+UNIT_TEST = [
+    {"name": "Run Tests", "title": "Run all unit tests", "href": "/device/test/runtests"},
+    {"name": "Code Coverage", "title": "See test code coverage", "href": "/device/test/codecoverage"}
+]
 
 # ---------------------------------------------------------
 # Public Generators
@@ -187,6 +197,14 @@ def get_dev_func_buttons(device):
 
     return f"{func_group}\n{config_group}"
 
+def get_unit_test_buttons():
+    """Returns the action buttons for Unit Testing (Run Tests, Code Coverage)."""
+    buttons = [
+        render_button(**b, active_mode="exact")
+        for b in UNIT_TEST
+    ]
+    return render_button_group(buttons, "Unit Test Actions")
+    
 def main():
     pass
 

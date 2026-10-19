@@ -7,12 +7,11 @@ import gui.add
 import gui.remove
 import gui.modify
 
-import razzledazzle
-import file_object
+import razzledazzle, file_object
 
-
-from flask import Flask, render_template, redirect, jsonify, abort, url_for, flash, request
+from flask import Flask, render_template, redirect, jsonify, abort, url_for, flash, request, Response
 from random import choice, randint
+import subprocess, sys
 
 app=Flask(__name__)
 
@@ -321,7 +320,117 @@ def roll(num, sides):
         "roll": rolls,
         "total": sum(rolls)
     })
-    
+
+@app.route("/device/test")
+def unit_test():
+    return render_template(
+        "template.html",
+        title="UT",
+        h1="Unit Testing",
+        comp1_func=gui.objects.get_dev_app_buttons(),
+        comp2_func=gui.objects.get_unit_test_buttons(),
+    )
+
+@app.route("/device/test/stream/runtests")
+def stream_unit_tests():
+    def generate():
+        # -u forces unbuffered binary stdout/stderr
+        # -v provides verbose progress line-by-line
+        cmd = [sys.executable, "-u", "-m", "pytest", "-v", "-n", "auto"]
+
+        process = subprocess.Popen(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            bufsize=1  # Line buffered
+        )
+
+        for line in iter(process.stdout.readline, ""):
+            # Format as Server-Sent Event (SSE)
+            yield f"data: {line}\n\n"
+
+        process.stdout.close()
+        process.wait()
+        yield "data: [DONE]\n\n"
+
+    return Response(
+        generate(),
+        mimetype="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no"  # Prevents Nginx/proxy from buffering chunks
+        }
+    )
+
+@app.route("/device/test/runtests")
+def run_unit_tests():
+    terminal_template = "components/dev_mgmt/live_terminal.html"
+    return render_template(
+        "template.html",
+        title="UT - Live Tests",
+        h1="Running Unit Tests",
+        comp1_func=gui.objects.get_dev_app_buttons(),
+        comp2_func=gui.objects.get_unit_test_buttons(),
+        comp3_template=terminal_template,
+        stream_url="/device/test/stream/runtests"
+    )
+
+@app.route("/device/test/stream/codecoverage")
+def stream_code_coverage():
+    def generate():
+        # -u: unbuffered stdout/stderr
+        # --cov=src: target directory for coverage measurement
+        # --cov-report=term-missing: print missing line numbers to terminal
+        cmd = [
+            sys.executable,
+            "-u",
+            "-m",
+            "pytest",
+            "-q",
+            "-n",
+            "auto",
+            "--cov=src",
+            "--cov-report=term-missing",
+        ]
+
+        process = subprocess.Popen(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            bufsize=1,  # Line-buffered
+        )
+
+        for line in iter(process.stdout.readline, ""):
+            # Server-Sent Event (SSE) data frame
+            yield f"data: {line}\n\n"
+
+        process.stdout.close()
+        process.wait()
+        yield "data: [DONE]\n\n"
+
+    return Response(
+        generate(),
+        mimetype="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        },
+    )
+
+@app.route("/device/test/codecoverage")
+def run_code_coverage():
+    return render_template(
+        "template.html",
+        title="UT - Code Coverage",
+        h1="Running Code Coverage",
+        comp1_func=gui.objects.get_dev_app_buttons(),
+        comp2_func=gui.objects.get_unit_test_buttons(),
+        comp3_template="components/dev_mgmt/live_terminal.html",
+        stream_url="/device/test/stream/codecoverage",
+    )
+
 def main():
     app.debug = True
     app.run(host="0.0.0.0", threaded=True)

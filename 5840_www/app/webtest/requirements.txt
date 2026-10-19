@@ -6,6 +6,7 @@ Jinja2
 # unit testing
 pytest
 pytest-xdist
+pytest-cov
 
 # Network automation & SSH
 netmiko
