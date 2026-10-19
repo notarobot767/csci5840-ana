@@ -10,13 +10,21 @@ on:
 
 jobs:
   ping-host:
-    # Targets the local daemon running on your Ubuntu box
     runs-on: self-hosted
-
     steps:
       - name: Print Hello World
         run: |
           echo "Hello World from GitHub Actions running directly on $(hostname)!"
           whoami
           uptime
-# test
+  
+  unit-tests:
+    runs-on: self-hosted
+    defaults:
+      run:
+        working-directory: /home/student/docker/5840_www
+    steps:
+      - name: Get Container Stats
+        run: docker compose stats --no-stream
+      - name: Run Unit Tests
+        run: docker compose exec webtest pytest -v -n auto
