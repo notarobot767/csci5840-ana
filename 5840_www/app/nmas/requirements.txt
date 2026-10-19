@@ -4,6 +4,10 @@ gunicorn
 PyYAML
 Jinja2
 
+# unit testing
+pytest
+pytest-xdist
+
 # Network automation & SSH
 netmiko
 paramiko

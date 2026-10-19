@@ -60,7 +60,7 @@ def get_devices() -> list[str]:
         return sorted(creds.keys())
     return []
 
-def get_driver(device: str):
+def get_driver(device: str) -> str:
     dev_cred = get_device_cred(device)
     if dev_cred:
         return dev_cred.get("driver")

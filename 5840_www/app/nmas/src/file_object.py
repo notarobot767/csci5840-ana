@@ -74,3 +74,9 @@ def write_file_yaml(file: str | Path, data: Any) -> bool:
         return True
     except Exception:
         return False
+
+def main():
+    pass
+
+if __name__ == "__main__":
+    main()
