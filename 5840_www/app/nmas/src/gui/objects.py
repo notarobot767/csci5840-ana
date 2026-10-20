@@ -101,6 +101,7 @@ DEVICE_APP_BUTTONS = [
 DEV_FUNC_BUTTONS = [
     {"name": "Yaml", "title": "YAML Configuration", "location": "yaml"},
     {"name": "OSPF", "title": "OSPF Neighbor Table", "location": "ospf"},
+    {"name": "ISIS", "title": "ISIS Neighbor Table", "location": "isis"},
     {"name": "BGP", "title": "BGP Neighbor Table", "location": "bgp"},
     {"name": "Route Table", "title": "Routing Table", "location": "route"},
     {"name": "CPU", "title": "CPU Utilization", "location": "cpu"},

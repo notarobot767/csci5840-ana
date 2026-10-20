@@ -92,6 +92,12 @@ def device_view_device_ospf(device):
     label = "ospf"
     return _render_device_funct(device, content, label)
 
+@app.route("/device/view/<device>/isis")
+def device_view_device_isis(device):
+    content = dev.show.get_isis_neighbors(device)
+    label = "isis"
+    return _render_device_funct(device, content, label)
+
 @app.route("/device/view/<device>/bgp")
 def device_view_device_bgp(device):
     content = dev.show.get_bgp_neighbors(device)
