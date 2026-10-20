@@ -38,7 +38,6 @@ def read_file_json(file: str | Path, default: Any = None) -> Any:
     except Exception:
         return default
 
-
 def write_file_json(file: str | Path, data: Any, indent: int = 2) -> bool:
     """Write Python object to JSON file. Returns True if successful, False otherwise."""
     try:

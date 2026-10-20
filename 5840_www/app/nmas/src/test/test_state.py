@@ -3,14 +3,15 @@
 from dev import show, creds, connect
 import pytest
 
+def _device(device: str) -> str | None:
+    if device in creds.get_devices():
+        return device
+    return None
 ####
 # r1
 ####
 def _device_r1():
-    device = "r1"
-    if device in creds.get_devices():
-        return device
-    return None
+    return _device("r1")
 
 def test_state_r1_facts():
     facts = connect.get_facts(_device_r1())
@@ -39,10 +40,7 @@ def test_state_r1_isis_neighbors():
 # r2
 ####
 def _device_r2():
-    device = "r2"
-    if device in creds.get_devices():
-        return device
-    return None
+    return _device("r2")
 
 def test_state_r2_facts():
     facts = connect.get_facts(_device_r2())
@@ -71,10 +69,7 @@ def test_state_r2_isis_neighbors():
 # r3
 ####
 def _device_r3():
-    device = "r3"
-    if device in creds.get_devices():
-        return device
-    return None
+    return _device("r3")
 
 def test_state_r3_facts():
     facts = connect.get_facts(_device_r3())
@@ -105,10 +100,7 @@ def test_state_r3_bgp_neighbors():
 # r4
 ####
 def _device_r4():
-    device = "r4"
-    if device in creds.get_devices():
-        return device
-    return None
+    return _device("r4")
 
 def test_state_r4_facts():
     facts = connect.get_facts(_device_r4())
@@ -139,10 +131,7 @@ def test_state_r4_bgp_neighbors():
 # s1
 ####
 def _device_s1():
-    device = "s1"
-    if device in creds.get_devices():
-        return device
-    return None
+    return _device("s1")
 
 def test_state_s1_facts():
     facts = connect.get_facts(_device_s1())
@@ -167,10 +156,7 @@ def test_state_s1_isis_neighbors():
 # s2
 ####
 def _device_s2():
-    device = "s2"
-    if device in creds.get_devices():
-        return device
-    return None
+    return _device("s2")
 
 def test_state_s2_facts():
     facts = connect.get_facts(_device_s2())
@@ -195,10 +181,7 @@ def test_state_s2_isis_neighbors():
 # s3
 ####
 def _device_s3():
-    device = "s3"
-    if device in creds.get_devices():
-        return device
-    return None
+    return _device("s3")
 
 def test_state_s3_facts():
     facts = connect.get_facts(_device_s3())
@@ -224,10 +207,7 @@ def test_state_s3_ospf_neighbors():
 # s4
 ####
 def _device_s4():
-    device = "s4"
-    if device in creds.get_devices():
-        return device
-    return None
+    return _device("s4")
 
 def test_state_s4_facts():
     facts = connect.get_facts(_device_s4())

@@ -27,4 +27,4 @@ jobs:
       - name: Get Container Stats
         run: docker compose stats --no-stream
       - name: Run Unit Tests
-        run: docker compose exec webtest pytest -v -n auto
+        run: docker compose exec www pytest -v -n auto
