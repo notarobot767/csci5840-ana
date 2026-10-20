@@ -117,7 +117,16 @@ def run_cmd(device: str, cmd: str) -> str | None:
 def run_cmd_set(device: str, cmd_lst: list[str]) -> dict:
     pass
 
+def get_facts(device: str) -> dict:
+    conn = get_connection(device)
+    if conn:
+        return conn.get_facts()
+    return None
+
 def main():
+    conn = get_connection("r3")
+    print(conn.get_facts())
+    conn.close()
     pass
 
 if __name__ == "__main__":

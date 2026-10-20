@@ -46,6 +46,23 @@ def get_bgp_neighbors(device: str) -> str:
         return dev.connect.run_cmd(device, cmd)
     return None
 
+def get_isis_neighbors(device: str) -> str:
+    driver = dev.creds.get_driver(device)
+    cmd = None
+    if driver:
+        match driver:
+            case "ios":
+                cmd = "show isis neighbors"
+            case "eos":
+                cmd = "show isis neighbors"
+            case _:
+                cmd = None
+    else:
+        return None
+    if cmd:
+        return dev.connect.run_cmd(device, cmd)
+    return None
+
 def get_route_table(device: str) -> str:
     return dev.connect.run_cmd(device, "show ipv6 route")
 
