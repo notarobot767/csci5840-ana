@@ -215,7 +215,10 @@ def build_side_by_side_diff(left_text, right_text, context_lines=1):
     return rows
 
 def main():
-    pass
+    dev = "r3"
+    print(get_startup(dev) ==  get_golden(dev))
+
+
 
 if __name__ == "__main__":
     main()
