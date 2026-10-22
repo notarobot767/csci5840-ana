@@ -36,6 +36,16 @@ def test_state_r1_isis_neighbors():
     assert output is not None and isinstance(output, str)
     assert "CORE      default  s1               L2   Ethernet2" in output
 
+def test_state_r1_config_drift():
+    running = show.get_running(_device_r1())
+    startup = show.get_running(_device_r1())
+    golden = show.get_golden(_device_r1())
+    assert running is not None
+    assert startup is not None
+    assert golden is not None
+    assert show.build_side_by_side_diff(running, startup) == []
+    assert show.build_side_by_side_diff(startup, golden) == []
+
 ####
 # r2
 ####
@@ -64,6 +74,16 @@ def test_state_r2_isis_neighbors():
     output = show.get_isis_neighbors(_device_r2())
     assert output is not None and isinstance(output, str)
     assert "CORE      default  s2               L2   Ethernet2" in output
+
+def test_state_r2_config_drift():
+    running = show.get_running(_device_r2())
+    startup = show.get_running(_device_r2())
+    golden = show.get_golden(_device_r2())
+    assert running is not None
+    assert startup is not None
+    assert golden is not None
+    assert show.build_side_by_side_diff(running, startup) == []
+    assert show.build_side_by_side_diff(startup, golden) == []
 
 ####
 # r3
@@ -96,6 +116,16 @@ def test_state_r3_bgp_neighbors():
     assert r"BGP router identifier 3.3.3.0, local AS number 26" in output
     assert r"FE80::5%GigabitEthernet2" in output
 
+def test_state_r3_config_drift():
+    running = show.get_running(_device_r3())
+    startup = show.get_running(_device_r3())
+    golden = show.get_golden(_device_r3())
+    assert running is not None
+    assert startup is not None
+    assert golden is not None
+    #assert show.build_side_by_side_diff(running, startup) == []
+    assert show.build_side_by_side_diff(startup, golden) == []
+
 ####
 # r4
 ####
@@ -127,6 +157,16 @@ def test_state_r4_bgp_neighbors():
     assert r"BGP router identifier 4.4.4.0, local AS number 26" in output
     assert r"FE80::5%GigabitEthernet2" in output
 
+def test_state_r4_config_drift():
+    running = show.get_running(_device_r4())
+    startup = show.get_running(_device_r4())
+    golden = show.get_golden(_device_r4())
+    assert running is not None
+    assert startup is not None
+    assert golden is not None
+    #assert show.build_side_by_side_diff(running, startup) == []
+    assert show.build_side_by_side_diff(startup, golden) == []
+
 ####
 # s1
 ####
@@ -152,6 +192,16 @@ def test_state_s1_isis_neighbors():
     assert "CORE      default  r1               L2   Ethernet1" in output
     assert "CORE      default  s2               L2   Ethernet2" in output
 
+def test_state_s1_config_drift():
+    running = show.get_running(_device_s1())
+    startup = show.get_running(_device_s1())
+    golden = show.get_golden(_device_s1())
+    assert running is not None
+    assert startup is not None
+    assert golden is not None
+    assert show.build_side_by_side_diff(running, startup) == []
+    assert show.build_side_by_side_diff(startup, golden) == []
+
 ####
 # s2
 ####
@@ -176,6 +226,16 @@ def test_state_s2_isis_neighbors():
     assert output is not None and isinstance(output, str)
     assert "CORE      default  r2               L2   Ethernet1" in output
     assert "CORE      default  s1               L2   Ethernet2" in output
+
+def test_state_s2_config_drift():
+    running = show.get_running(_device_s2())
+    startup = show.get_running(_device_s2())
+    golden = show.get_golden(_device_s2())
+    assert running is not None
+    assert startup is not None
+    assert golden is not None
+    assert show.build_side_by_side_diff(running, startup) == []
+    assert show.build_side_by_side_diff(startup, golden) == []
 
 ####
 # s3
@@ -203,6 +263,16 @@ def test_state_s3_ospf_neighbors():
     assert "Neighbor 4.4.4.1 VRF default" in output
     assert "Neighbor 3.3.3.0 VRF default" in output
 
+def test_state_s3_config_drift():
+    running = show.get_running(_device_s3())
+    startup = show.get_running(_device_s3())
+    golden = show.get_golden(_device_s3())
+    assert running is not None
+    assert startup is not None
+    assert golden is not None
+    assert show.build_side_by_side_diff(running, startup) == []
+    assert show.build_side_by_side_diff(startup, golden) == []
+
 ####
 # s4
 ####
@@ -228,6 +298,16 @@ def test_state_s4_ospf_neighbors():
     assert "Neighbor 2.2.2.0 VRF default" in output
     assert "Neighbor 3.3.3.1 VRF default" in output
     assert "Neighbor 4.4.4.0 VRF default" in output
+
+def test_state_s4_config_drift():
+    running = show.get_running(_device_s4())
+    startup = show.get_running(_device_s4())
+    golden = show.get_golden(_device_s4())
+    assert running is not None
+    assert startup is not None
+    assert golden is not None
+    assert show.build_side_by_side_diff(running, startup) == []
+    assert show.build_side_by_side_diff(startup, golden) == []
 
 def main():
     pass
