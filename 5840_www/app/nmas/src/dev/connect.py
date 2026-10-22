@@ -124,9 +124,6 @@ def get_facts(device: str) -> dict:
     return None
 
 def main():
-    conn = get_connection("r3")
-    print(conn.get_facts())
-    conn.close()
     pass
 
 if __name__ == "__main__":

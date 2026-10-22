@@ -2,12 +2,20 @@
 
 import file_object
 import copy, yaml, random, string, secrets
+from pathlib import Path
 
 def get_cred_path() -> str:
     return "secrets/device_creds.yaml"
 
 def get_template_path() -> str:
     return "secrets/device_config.yaml"
+
+def get_golden_path(device) -> str:
+    if device:
+        path = Path(f"/golden/{device}.cfg")
+        if path:
+            return path
+    return None
 
 def get_creds() -> dict:
     """Return dictionary of device credentials."""

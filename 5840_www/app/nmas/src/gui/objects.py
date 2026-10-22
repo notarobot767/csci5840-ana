@@ -15,12 +15,13 @@ def render_button(
     rel=None,
     active_mode=None,
     is_active=None,
+    variant="primary",
 ):
     """
-    Renders a single Bootstrap button.
+    Renders a single Bootstrap button with custom color variant.
     - If `is_active` is explicitly passed (bool), it uses that.
     - Otherwise, falls back to `active_mode` ('prefix' or 'exact').
-    - Renders 'btn-primary' if active, 'btn-outline-primary' if inactive.
+    - Renders f'btn-{variant}' if active, f'btn-outline-{variant}' if inactive.
     """
     if is_active is None:
         if active_mode == "prefix":
@@ -30,7 +31,7 @@ def render_button(
         else:
             is_active = False
 
-    btn_variant = "btn-primary" if is_active else "btn-outline-primary"
+    btn_variant = f"btn-{variant}" if is_active else f"btn-outline-{variant}"
     aria_attr = ' aria-current="page"' if is_active else ""
 
     target_attr = f' target="{target}"' if target else ""
@@ -113,6 +114,9 @@ DEV_CONFIG_BUTTONS = [
     {"name": "Running Config", "title": "Running Configuration", "location": "running"},
     {"name": "Startup Config", "title": "Startup Configuration", "location": "startup"},
     {"name": "Golden Config", "title": "Golden Configuration", "location": "golden"},
+]
+
+DEV_DIFF_BUTTONS = [
     {"name": "Start/Run (diff)", "title": "Startup Config vs Running Config Diff", "location": "runstart/diff"},
     {"name": "Run/Golden (diff)", "title": "Running Config vs Golden Config Diff", "location": "running/diff"},
     {"name": "Start/Golden (diff)", "title": "Startup Config vs Golden Config Diff", "location": "startup/diff"},
@@ -121,6 +125,12 @@ DEV_CONFIG_BUTTONS = [
 UNIT_TEST = [
     {"name": "Run Tests", "title": "Run all unit tests", "href": "/device/test/runtests"},
     {"name": "Code Coverage", "title": "See test code coverage", "href": "/device/test/codecoverage"}
+]
+
+WRITE_CONFIG = [
+    {"name": "Write Memory", "title": "Copy running config to startup", "location": "startup/write"},
+    {"name": "Write Golden", "title": "Copy startup config to golden", "location": "golden/write"},
+    {"name": "Baseline", "title": "Copy golden config to startup", "location": "golden/baseline"},
 ]
 
 # ---------------------------------------------------------
@@ -170,19 +180,21 @@ def get_device_view_buttons(func="view",current_device=None):
                 title=f"{func} {item}",
                 href=item_path,
                 is_active=is_active,
+                variant="secondary"
             )
         )
 
     return render_button_group(buttons, "Device View Actions")
 
 def get_dev_func_buttons(device):
-    """Returns the function actions and diff config buttons for a specific device."""
-    def _build_button(b):
+    """Returns function actions, configs, diffs, and write buttons for a specific device."""
+    def _build_button(b, variant="primary"):
         return render_button(
             name=b["name"],
             title=b["title"],
             href=f"/device/view/{device}/{b['location']}",
             active_mode="exact",
+            variant=variant,
         )
 
     func_group = render_button_group(
@@ -191,10 +203,32 @@ def get_dev_func_buttons(device):
     )
     config_group = render_button_group(
         [_build_button(b) for b in DEV_CONFIG_BUTTONS],
+        "Device Config Actions",
+    )
+    diff_group = render_button_group(
+        [_build_button(b, variant="warning") for b in DEV_DIFF_BUTTONS],
         "Device Diff Actions",
     )
+    write_group = render_button_group(
+        [_build_button(b, variant="danger") for b in WRITE_CONFIG],
+        "Device Write Actions",
+    )
 
-    return f"{func_group}\n{config_group}"
+    return f"{func_group}\n{config_group}\n{diff_group}\n{write_group}"
+
+def get_write_config_buttons(device):
+    """Returns the write/sync configuration action buttons for a device in red."""
+    buttons = [
+        render_button(
+            name=b["name"],
+            title=b["title"],
+            href=f"/device/view/{device}/{b['location']}",
+            active_mode="exact",
+            variant="danger",
+        )
+        for b in WRITE_CONFIG
+    ]
+    return render_button_group(buttons, "Device Write Config Actions")
 
 def get_unit_test_buttons():
     """Returns the action buttons for Unit Testing (Run Tests, Code Coverage)."""
@@ -203,7 +237,7 @@ def get_unit_test_buttons():
         for b in UNIT_TEST
     ]
     return render_button_group(buttons, "Unit Test Actions")
-    
+
 def main():
     pass
 

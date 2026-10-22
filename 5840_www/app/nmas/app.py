@@ -2,6 +2,7 @@
 
 import dev.show
 import dev.creds
+import dev.manage
 import gui.objects
 import gui.add
 import gui.remove
@@ -194,6 +195,81 @@ def device_view_device_startup_diff(device):
         left_cfg=golden_cfg, left_label="Golden Config",
         right_cfg=startup_cfg, right_label="Startup Config",
         diff_tag="startup diff"
+    )
+
+def _render_device_prompt(device, action_title, action_description, cancel_url):
+    return render_template(
+        "template.html",
+        title=action_title,
+        h1=f"{action_title}: {device}",
+        comp1_func=gui.objects.get_dev_app_buttons(),
+        comp2_func=gui.objects.get_device_view_buttons(),
+        comp3_func=gui.objects.get_dev_func_buttons(device),
+        comp4_template="components/dev_mgmt/device_action_prompt.html",
+        device=device,
+        action_title=action_title,
+        action_description=action_description,
+        cancel_url=cancel_url,
+    )
+
+@app.route("/device/view/<device>/startup/write", methods=["GET", "POST"])
+def device_write_running_to_startup(device):
+    if not _is_safe_device(device):
+        return _no_such_device(device)
+
+    if request.method == "POST":
+        result = dev.manage.write_running_to_startup(device)
+        if result:
+            flash(f"Running config saved to startup on '{device}'.", "success")
+        else:
+            flash(f"Failed to copy running config to startup on '{device}'.", "danger")
+        return redirect(url_for("device_view_device_startup_running_diff", device=device))
+
+    return _render_device_prompt(
+        device=device,
+        action_title="Write Memory",
+        action_description="copy running config to startup",
+        cancel_url=url_for("device_view_device_startup_running_diff", device=device),
+    )
+
+@app.route("/device/view/<device>/golden/write", methods=["GET", "POST"])
+def device_write_startup_to_golden(device):
+    if not _is_safe_device(device):
+        return _no_such_device(device)
+
+    if request.method == "POST":
+        result = dev.manage.write_startup_to_golden(device)
+        if result:
+            flash(f"Startup config saved to golden on '{device}'.", "success")
+        else:
+            flash(f"Failed to copy startup config to golden on '{device}'.", "danger")
+        return redirect(url_for("device_view_device_startup_diff", device=device))
+
+    return _render_device_prompt(
+        device=device,
+        action_title="Write Golden",
+        action_description="copy startup config to golden",
+        cancel_url=url_for("device_view_device_startup_diff", device=device),
+    )
+
+@app.route("/device/view/<device>/golden/baseline", methods=["GET", "POST"])
+def device_write_golden_to_startup(device):
+    if not _is_safe_device(device):
+        return _no_such_device(device)
+
+    if request.method == "POST":
+        result = dev.manage.write_golden_to_startup(device)
+        if result:
+            flash(f"Golden config applied to startup on '{device}'.", "success")
+        else:
+            flash(f"Failed to copy golden config to startup on '{device}'.", "danger")
+        return redirect(url_for("device_view_device_startup", device=device))
+
+    return _render_device_prompt(
+        device=device,
+        action_title="Baseline Config",
+        action_description="overwrite startup config with golden config",
+        cancel_url=url_for("device_view_device_startup", device=device),
     )
 
 @app.route("/device/add", methods=["GET", "POST"])

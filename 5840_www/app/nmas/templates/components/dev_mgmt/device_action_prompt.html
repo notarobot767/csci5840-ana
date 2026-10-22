@@ -1,0 +1,16 @@
+<div class="card shadow-sm mt-3">
+  <div class="card-header bg-warning text-dark">
+    <h5 class="card-title mb-0">Confirm Action: {{ action_title }}</h5>
+  </div>
+  <div class="card-body">
+    <p class="card-text fs-5">
+      Are you sure you want to <strong>{{ action_description }}</strong> for device <code>{{ device }}</code>?
+    </p>
+    <div class="d-flex gap-2 mt-4">
+      <form method="POST">
+        <button type="submit" class="btn btn-danger">Confirm & Execute</button>
+      </form>
+      <a href="{{ cancel_url }}" class="btn btn-secondary">Cancel</a>
+    </div>
+  </div>
+</div>
