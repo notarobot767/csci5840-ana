@@ -115,7 +115,10 @@ def get_golden(device):
     return None
 
 def sanitize_config(config: str) -> str:
-    # 1. Strip PKI cert blocks first (avoids messing with line index loops)
+    if not config:
+        return ""
+
+    # 1. Strip multi-line Cisco PKI certificate blocks (certificate chain / self-signed / ca down to 'quit')
     config = re.sub(
         r"crypto pki certificate chain[\s\S]*?\bquit\b",
         "",
@@ -129,22 +132,39 @@ def sanitize_config(config: str) -> str:
         flags=re.IGNORECASE,
     )
 
-    # 2. Strip leading banners, blank lines, and initial '!' comments
-    lines = config.splitlines()
+    # 2. Filter lines across the entire file
+    filtered_lines = []
+    pki_patterns = (
+        "crypto pki certificate ",
+        "certificate ca ",
+        "certificate self-signed ",
+    )
 
-    def should_drop(line: str) -> bool:
-        stripped = line.replace("\xa0", " ").strip()
-        if not stripped:
-            return True
-        if stripped.startswith("!"):
-            return True
-        if stripped.lower().startswith("using ") and "bytes" in stripped.lower():
-            return True
-        return False
+    for raw_line in config.splitlines():
+        line = raw_line.replace("\xa0", " ").strip()
 
-    cleaned_lines = list(dropwhile(should_drop, lines))
-    return "\n".join(cleaned_lines)
+        # Remove empty lines throughout the entire config
+        if not line:
+            continue
 
+        # Remove Cisco NVRAM header
+        if line.lower().startswith("using ") and "bytes" in line.lower():
+            continue
+
+        # Filter out standalone/lingering certificate declarations
+        line_lower = line.lower()
+        if any(pattern in line_lower for pattern in pki_patterns):
+            continue
+
+        # Keep original indentation from raw_line if preferred, or stripped line
+        filtered_lines.append(raw_line.rstrip())
+
+    # 3. Strip leading comments ('!') while preserving intra-config section comments
+    while filtered_lines and filtered_lines[0].strip().startswith("!"):
+        filtered_lines.pop(0)
+
+    return "\n".join(filtered_lines)
+    
 def build_side_by_side_diff(left_text, right_text, context_lines=1):
     """
     Generates compact context diff (changes + context lines) in side-by-side rows.
